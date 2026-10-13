@@ -301,6 +301,12 @@ h2 {
   max-width: 700px;
   margin: 0 auto;
 }
+.rodape .credito {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  opacity: 0.6;
+  letter-spacing: 0.3px;
+}
 
 @media (max-width: 520px) {
   .grid-dias { grid-template-columns: 1fr; }
