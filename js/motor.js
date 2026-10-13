@@ -344,6 +344,53 @@ const Motor = (function () {
       recomputarBloco(res, mapa);
     }
 
+    // ---- Abonadas "de ponta" avulsas ----
+    // Mesmo sem uma ponte a fechar, uma abonada colada no 1º dia útil de uma
+    // ponta já é um dia de folga — e, se o dia seguinte for livre (fim de
+    // semana/feriado), "puxa" esse descanso também. Como a regra é 1 abonada por
+    // mês, tentamos colar UMA abonada em CADA ponta (início e fim). Quando as
+    // férias cruzam a virada de mês, as pontas caem em meses diferentes e cabem
+    // as duas abonadas — rendendo tipicamente +2 (ou mais) dias de descanso.
+    if (cfg.usarAbonadas) {
+      // depois do fim: avança colando abonadas enquanto o próximo dia for útil,
+      // houver abonada disponível no mês e isso resultar em ganho de folga.
+      colarAbonadasNaPonta(1);
+      colarAbonadasNaPonta(-1);
+    }
+
+    // IMPORTANTE (prioridade): esta função roda DEPOIS de `tentar` (pontes) e
+    // `capturarIlha` (ilhas de feriado). Logo, se a abonada de um mês já foi
+    // gasta para EMENDAR um feriado/ponte, o teste `abonadasNoMes(mesKey) < 1`
+    // impede que uma segunda abonada do mesmo mês seja usada aqui. Ou seja: a
+    // abonada só é colada na ponta como dia avulso quando NÃO foi necessária
+    // para uma emenda naquele mês.
+    function colarAbonadasNaPonta(direcao) {
+      // tenta no máximo alguns dias úteis seguidos; cada compra pode destravar
+      // um fim de semana/feriado adiante.
+      const MAX = 3;
+      for (let i = 0; i < MAX; i++) {
+        const alvo = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
+        const c = classificar(alvo, mapa);
+        if (c.estado !== "util") break; // ponta já livre: recomputarBloco já cobriu
+        const mesKey = iso(alvo).slice(0, 7);
+        // só com abonada disponível para aquele mês (1/mês neste período e mês
+        // não usado em outro período do plano) e dentro do teto anual.
+        if (!(abonadasNoMes(mesKey) < 1 && !mesesJaUsados.has(mesKey) && res.abonadas.length < 6)) break;
+        // o dia seguinte (na mesma direção) é livre? então esta abonada "puxa"
+        // um descanso (emenda real); senão, é só um dia avulso de folga.
+        const vizinho = addDias(alvo, direcao);
+        const motivo = ehLivre(vizinho, mapa)
+          ? "Abonada (emenda na ponta das férias)"
+          : "Abonada (dia extra na ponta das férias)";
+        // reserva a abonada e incorpora o dia; recomputar pode puxar o FDS colado.
+        abonadasPorMes[mesKey] = abonadasNoMes(mesKey) + 1;
+        res.abonadas.push({ dt: new Date(alvo), motivo });
+        if (direcao === 1) res.blocoFim = new Date(alvo);
+        else res.blocoInicio = new Date(alvo);
+        recomputarBloco(res, mapa);
+      }
+    }
+
     // ---- Doação de sangue "avulsa" ----
     // Se o modo usa doação mas ela não foi aproveitada como ponte, anexa-a a uma
     // ponta do bloco para render pelo menos +1 dia de folga. Assim o modo
@@ -396,7 +443,12 @@ const Motor = (function () {
     const razao = res.totalDescanso / diasGastos;
     const bonusEmenda = res.detalhesEmenda.length * 1.0; // só feriados/facult. em dia útil
     const penalidade = res.feriadosDesperdicados * 1.5;  // feriado dentro das férias = jogado fora
-    return razao * 10 + res.totalDescanso + bonusEmenda - penalidade;
+    // Pequeno desempate: quando as férias CRUZAM a virada de mês, cabem abonadas
+    // em meses diferentes (uma em cada ponta) — o que rende mais descanso. Este
+    // bônus é só de desempate (não premia gasto de recurso: duas opções de mesmo
+    // descanso e mesmo custo, prefere a que cruza o mês por ser mais flexível).
+    const cruzaMes = res.inicioFerias.getMonth() !== res.fimFerias.getMonth() ? 0.5 : 0;
+    return razao * 10 + res.totalDescanso + bonusEmenda - penalidade + cruzaMes;
   }
 
   /* Gera e ordena todas as sugestões do ano para o modo escolhido.
