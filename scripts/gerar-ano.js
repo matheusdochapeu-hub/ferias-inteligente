@@ -143,21 +143,36 @@ function replicarLista(lista, mapaMv, ano) {
   const out = [];
   (lista || []).forEach((item) => {
     let dataNova;
+    let nomeItem = item.nome;
+    let ehMovel = false; // a data vem da fórmula (determinística)
+
     if (mapaMv[item.data]) {
       // a própria data é um feriado móvel -> usa a data móvel do ano-alvo
       dataNova = mapaMv[item.data];
+      ehMovel = true;
     } else if (ehFacultativo(item.tipo)) {
-      // só pontes/facultativos podem "acompanhar" um móvel vizinho; feriado
-      // fixo NUNCA se move (é sempre replicado por trocaAno).
+      // pontes/facultativos podem "acompanhar" um móvel VIZINHO; se não for o
+      // caso, é uma ponte de data fixa que pode cair em outro dia da semana no
+      // ano-alvo — sinalizamos isso no nome para facilitar a conferência.
       const derivada = ajustarDerivadaDeMovel(item.data, ANO_MOLDE, ano);
-      dataNova = derivada || trocaAno(item.data, ano);
+      if (derivada) {
+        dataNova = derivada;
+      } else {
+        dataNova = trocaAno(item.data, ano);
+        if (!/dia da semana pode mudar/i.test(nomeItem)) {
+          nomeItem = nomeItem + " (conferir: dia da semana pode mudar no ano)";
+        }
+      }
     } else {
       dataNova = trocaAno(item.data, ano); // feriado fixo
     }
+
     dataNova = validarData(dataNova, ano); // trata 29/02 em ano não bissexto
-    const novo = { data: dataNova, nome: item.nome, tipo: item.tipo };
-    // facultativos/meio sempre viram previsão (dependem de decreto/portaria).
-    out.push(ehFacultativo(item.tipo) ? comoPrevisao(novo) : novo);
+    const novo = { data: dataNova, nome: nomeItem, tipo: item.tipo };
+    // Facultativos/meio viram PREVISÃO (dependem de decreto/portaria) — EXCETO
+    // quando a data é um feriado móvel conhecido (ex.: Quarta de Cinzas), que é
+    // 100% determinística por fórmula e não precisa de conferência humana.
+    out.push(ehFacultativo(item.tipo) && !ehMovel ? comoPrevisao(novo) : novo);
   });
   return out;
 }
@@ -171,9 +186,17 @@ console.log(`\nGerando rascunho de ${ANO_ALVO} a partir do molde ${ANO_MOLDE}...
  * o usuário force explicitamente com --permitir-molde-previsao. */
 function moldeTemPrevisao(ano) {
   const arquivos = [`nacionais-${ano}.json`, `pmrp-${ano}.json`, `usp-${ano}.json`];
-  const temFlag = (obj) => JSON.stringify(obj).includes('"previsao":true') || JSON.stringify(obj).includes('"previsao": true');
+  // Detecta previsão por QUALQUER das duas convenções do projeto:
+  //  - flag "previsao": true (gerada pelo próprio gerador), ou
+  //  - sufixo "— previsão" no nome (usado nos arquivos-semente de 2027).
+  const temPrevisao = (obj) => {
+    const txt = JSON.stringify(obj);
+    return txt.includes('"previsao":true') ||
+           txt.includes('"previsao": true') ||
+           /previs[ãa]o/i.test(txt);
+  };
   return arquivos.some((a) => {
-    try { return temFlag(lerJSON(a)); } catch (_) { return false; }
+    try { return temPrevisao(lerJSON(a)); } catch (_) { return false; }
   });
 }
 if (!process.argv.includes("--permitir-molde-previsao") && moldeTemPrevisao(ANO_MOLDE)) {

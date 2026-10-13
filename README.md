@@ -8,28 +8,38 @@ e **emendar feriados** para:
 
 ## Como funciona
 
-1. **Tela inicial:** escolha o órgão (PMRP ou USP) — sem precisar se identificar.
+O app tem um fluxo de **6 telas**: órgão → (cidade, se USP) → dias → preferência de mês →
+resultados → (decisão de 2º período) → plano final.
+
+1. **Órgão:** escolha PMRP ou USP — sem precisar se identificar.
 2. **USP:** escolha a cidade da sua unidade (os feriados municipais mudam por cidade).
-3. **Dias de férias:** 10, 15, 20 ou 30 dias.
-4. **Resultados** em **quatro modos** (botões), listados da **melhor para a pior** opção,
+3. **Dias de férias:** 10, 15, 20 ou 30 dias — e **5 dias** (exclusivo da USP, que pode vender 10).
+4. **Preferência de mês:** opcional, para que as sugestões comecem nos meses escolhidos.
+5. **Resultados** em **quatro modos** (abas), listados da **melhor para a pior** opção,
    cada sugestão com um **minicalendário visual**:
    - **📅 Férias corridas:** só emendas de feriados municipais, estaduais e federais (e pontes).
    - **✨ Abonadas + doação:** usa abonadas (1 por mês) e doação de sangue para o máximo em casa.
    - **🗓️ Só abonadas:** usa abonadas, sem doação de sangue.
    - **🩸 Só doação de sangue:** usa apenas a folga de doação, sem abonadas.
+6. **Decisão / plano final:** escolhido o 1º período, o app pode oferecer um 2º período
+   (fracionamento) e monta o plano final com resumo e opção de **imprimir/PDF**.
 
    > As abonadas são do saldo anual do servidor (6/ano, 1 por mês) e a doação de sangue é
    > possível 1 vez a cada 3 meses. Cada sugestão é um cenário independente de quando tirar
    > as férias; o app respeita "1 abonada por mês" e "1 doação por janela" dentro de cada opção.
+   > No modo abonadas, o app também cola uma abonada em cada ponta das férias quando isso
+   > rende descanso real (fins de semana contam), favorecendo períodos que cruzam a virada
+   > de mês (onde cabem 2 abonadas, 1 por mês).
 
 Informações exibidas (apenas informativas):
 - **Pagamento:** PMRP recebe no 1º dia útil; USP no 4º dia útil, com férias pagas adiantadas.
-- **Quarta-feira de Cinzas (10/02/2027):** meio período (emendável, não é feriado cheio).
+- **Quarta-feira de Cinzas:** na PMRP é meio período (emendável, não é feriado cheio); na USP
+  as atividades são suspensas (tratada como feriado).
 
 ## Estrutura do projeto
 
 ```
-index.html                        → página única com as 4 telas
+index.html                        → página única com as 6 telas
 css/estilo.css                    → estilos
 js/motor.js                       → motor de cálculo (independente da interface)
 js/app.js                         → controle de telas e renderização
@@ -143,6 +153,11 @@ dos anos publicados) e escolhe qual exibir pela regra:
 
 Exemplos: em qualquer data de jan–set/2027 o app mostra **2027**; a partir de **1º/out/2027**
 (se 2028 já estiver publicado) passa a mostrar **2028**. Antes disso, nunca antecipa.
+
+> Ressalva: a regra "não antecipar" pressupõe que o **ano corrente já esteja publicado** no
+> índice. Se o índice listar apenas um ano futuro (ex.: só 2028, sem 2027), o app usa esse ano
+> como fallback — ou seja, sempre há um ano válido para exibir. Na operação normal, o ano
+> corrente estará sempre publicado.
 
 ### 🤖 Automação anual (GitHub Action) — duas rodadas (out + nov)
 O workflow `.github/workflows/gerar-proximo-ano.yml` roda em **duas datas** (e sob demanda em

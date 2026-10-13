@@ -103,24 +103,42 @@
     else document.body.appendChild(aviso);
   }
 
+  /* Tenta carregar os JSON de um ano específico. Resolve com os dados ou rejeita
+   * (ex.: 404 se os arquivos daquele ano ainda não existem). */
+  function carregarAno(ano, entesDoc) {
+    return Promise.all([
+      carregarJSON(`data/feriados/nacionais-${ano}.json`),
+      carregarJSON(`data/feriados/pmrp-${ano}.json`),
+      carregarJSON(`data/feriados/usp-${ano}.json`)
+    ]).then(([nacionais, pmrp, usp]) => ({ ano, entesDoc, nacionais, pmrp, usp }));
+  }
+
   function iniciar() {
-    // 1) descobre quais anos existem; 2) escolhe o ano a exibir pela regra;
-    // 3) carrega os JSON desse ano e inicia o App.
+    // 1) lê o índice; 2) escolhe o ano a exibir pela regra; 3) tenta carregar os
+    // JSON desse ano e, se faltar algum (índice e arquivos divergentes), cai para
+    // o PRÓXIMO maior ano cujos arquivos existam — em vez de derrubar o app.
     carregarJSON("data/feriados/index.json")
       .then((indice) => {
         const anos = (indice && Array.isArray(indice.anos) && indice.anos.length)
           ? indice.anos.slice()
           : [new Date().getFullYear()];
-        const ano = escolherAno(anos, new Date());
-        return Promise.all([
-          Promise.resolve(ano),
-          carregarJSON("data/entes.json"),
-          carregarJSON(`data/feriados/nacionais-${ano}.json`),
-          carregarJSON(`data/feriados/pmrp-${ano}.json`),
-          carregarJSON(`data/feriados/usp-${ano}.json`)
-        ]);
+        const alvo = escolherAno(anos, new Date());
+
+        // ordem de tentativa: o ano escolhido primeiro, depois os demais do maior
+        // para o menor (fallback resiliente).
+        const candidatos = [alvo].concat(
+          anos.slice().sort((a, b) => b - a).filter((a) => a !== alvo)
+        );
+
+        return carregarJSON("data/entes.json").then((entesDoc) => {
+          // tenta cada candidato em sequência até um carregar por completo
+          return candidatos.reduce(
+            (promessa, ano) => promessa.catch(() => carregarAno(ano, entesDoc)),
+            Promise.reject() // começa rejeitado para a 1ª tentativa rodar no catch
+          );
+        });
       })
-      .then(([ano, entesDoc, nacionais, pmrp, usp]) => {
+      .then(({ ano, entesDoc, nacionais, pmrp, usp }) => {
         montarCalendarios(ano, entesDoc, nacionais, pmrp, usp);
         if (window.App && typeof window.App.iniciar === "function") {
           window.App.iniciar();
