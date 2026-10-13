@@ -365,31 +365,51 @@ const Motor = (function () {
     // abonada só é colada na ponta como dia avulso quando NÃO foi necessária
     // para uma emenda naquele mês.
     function colarAbonadasNaPonta(direcao) {
-      // Uma abonada só vale a pena na ponta se "puxar" um descanso — isto é, se a
-      // partir do 1º dia útil da ponta chegarmos a um dia LIVRE comprando no
-      // máximo 1 dia útil (a própria abonada). Se o dia útil da ponta já encosta
-      // num dia livre (fim de semana/feriado), a abonada rende +1 e puxa esse
-      // bloco. Se o vizinho for outro dia útil, a abonada seria um dia AVULSO que
-      // só reduz a razão descanso/gasto — então NÃO colamos (evita gerar uma
-      // sugestão pior gastando recurso).
-      const MAX = 2; // nº de pontas que uma mesma direção pode destravar em sequência
+      // A abonada é colada no 1º dia útil de cada ponta porque ela SEMPRE encosta
+      // no bloco de descanso (que já inclui fins de semana, feriados e pontes).
+      // Como sábado/domingo CONTAM como descanso, uma abonada numa sexta/segunda
+      // (ou véspera de bloco) puxa esses dias livres junto — por isso quase sempre
+      // rende bem mais que o próprio dia. No pior caso (bloco cercado de dias
+      // úteis dos dois lados), rende ao menos +1 dia colado às férias, o que o
+      // servidor quer. Só paramos quando não há mais dia útil na ponta, acabou o
+      // saldo do mês (regra 1/mês), ou estouraria o teto anual de 6.
+      //
+      // Avaliamos o GANHO LÍQUIDO antes de confirmar: compramos o dia útil-alvo
+      // e, se o resultado (após recomputarBloco) aumentar o total de descanso em
+      // pelo menos 1, mantemos; senão desfazemos (segurança — na prática sempre
+      // ganha, pois o dia comprado já é um dia de folga a mais no bloco).
+      const MAX = 2; // no máx. 2 compras por direção (ex.: furar 1 ponte curta)
       for (let i = 0; i < MAX; i++) {
         const alvo = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
         const c = classificar(alvo, mapa);
         if (c.estado !== "util") break; // ponta já livre: recomputarBloco já cobriu
-        // ganho real exige que o vizinho na mesma direção seja livre
-        const vizinho = addDias(alvo, direcao);
-        if (!ehLivre(vizinho, mapa)) break; // seria dia avulso -> não vale a pena
         const mesKey = iso(alvo).slice(0, 7);
-        // só com abonada disponível para aquele mês (1/mês neste período e mês
-        // não usado em outro período do plano) e dentro do teto anual.
+        // abonada disponível p/ aquele mês (1/mês neste período, mês não usado em
+        // outro período do plano) e dentro do teto anual de 6.
         if (!(abonadasNoMes(mesKey) < 1 && !mesesJaUsados.has(mesKey) && res.abonadas.length < 6)) break;
-        // reserva a abonada e incorpora o dia; recomputar puxa o descanso colado.
+
+        // simula a compra e mede o ganho líquido de descanso
+        const descAntes = diffDias(res.blocoInicio, res.blocoFim) + 1;
+        const salvoIni = new Date(res.blocoInicio), salvoFim = new Date(res.blocoFim);
         abonadasPorMes[mesKey] = abonadasNoMes(mesKey) + 1;
-        res.abonadas.push({ dt: new Date(alvo), motivo: "Abonada (emenda na ponta das férias)" });
+        const marca = { dt: new Date(alvo), motivo: "Abonada (ponta das férias)" };
+        res.abonadas.push(marca);
         if (direcao === 1) res.blocoFim = new Date(alvo);
         else res.blocoInicio = new Date(alvo);
-        recomputarBloco(res, mapa);
+        recomputarBloco(res, mapa); // incorpora o dia + puxa fins de semana/feriados colados
+        const descDepois = diffDias(res.blocoInicio, res.blocoFim) + 1;
+
+        if (descDepois - descAntes < 1) {
+          // não houve ganho real -> desfaz a compra e encerra esta ponta
+          abonadasPorMes[mesKey] = abonadasNoMes(mesKey) - 1;
+          res.abonadas = res.abonadas.filter((a) => a !== marca);
+          res.blocoInicio = salvoIni; res.blocoFim = salvoFim;
+          break;
+        }
+        // rótulo: distingue emenda que puxou descanso extra de dia simples colado
+        marca.motivo = (descDepois - descAntes) > 1
+          ? "Abonada (emenda na ponta das férias)"
+          : "Abonada (dia extra na ponta das férias)";
       }
     }
 
