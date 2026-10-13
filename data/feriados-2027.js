@@ -46,7 +46,8 @@ window.CALENDARIOS[2027] = {
     // Quarta-feira de Cinzas (10/02) NÃO fica aqui: o tratamento difere por ente.
     //  - USP: atividades suspensas => feriado cheio (ver entes.usp.estaduais)
     //  - PMRP: expediente de meio período (ver entes.pmrp.facultativosLocais)
-    // Pontos facultativos de out/nov 2027 — válidos para USP e PMRP.
+    // Pontes de out/nov 2027 — válidas para USP e PMRP.
+    { data: "2027-10-11", nome: "Ponte de N. Sra. Aparecida (ponto facultativo)", tipo: "facultativo" },
     { data: "2027-10-29", nome: "Ponto facultativo (pós Dia do Servidor)", tipo: "facultativo" },
     { data: "2027-11-01", nome: "Ponto facultativo (ponte de Finados)", tipo: "facultativo" }
   ],
