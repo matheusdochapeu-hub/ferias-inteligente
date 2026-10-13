@@ -236,6 +236,19 @@ h2 {
 .muted { color: var(--cinza-texto); font-weight: 400; font-size: 0.88rem; }
 
 .vazio { text-align: center; color: var(--cinza-texto); }
+.vazio-box {
+  text-align: center;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: var(--sombra);
+  padding: 24px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+.vazio-box .vazio { margin: 0; }
+.vazio-box .btn-opcao { max-width: 340px; }
 
 /* ---------- Minicalendário ---------- */
 .mini-cal-wrap {

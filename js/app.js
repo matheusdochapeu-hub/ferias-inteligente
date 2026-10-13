@@ -164,7 +164,18 @@ const App = (function () {
     const ente = window.CALENDARIOS[2027].entes[estado.ente];
     let txt = ente.nome;
     if (estado.ente === "usp" && estado.cidade) txt += " — " + estado.cidade;
-    $("#mes-info").textContent = `${txt} · ${estado.dias} dias`;
+    const etapaTxt = estado.etapa === 2 ? ` · 2º período (${estado.dias} dias restantes)` : ` · ${estado.dias} dias`;
+    $("#mes-info").textContent = `${txt}${etapaTxt}`;
+
+    // botão "voltar": na 1ª etapa volta aos dias; na 2ª volta à decisão
+    const voltar = $("#mes-voltar");
+    if (estado.etapa === 2) {
+      voltar.setAttribute("data-voltar", "tela-decisao");
+      voltar.textContent = "⬅️ Voltar";
+    } else {
+      voltar.setAttribute("data-voltar", "tela-dias");
+      voltar.textContent = "⬅️ Mudar número de dias";
+    }
 
     // garante que a grade de meses exista (gerada uma vez)
     const grade = $("#grid-meses");
@@ -264,9 +275,11 @@ const App = (function () {
 
     const restr = estado.etapa === 2 ? restricoesDoPlano() : null;
     let lista = Motor.calcular(estado.ente, estado.cidade, estado.dias, estado.modo, restr);
+    const totalAntesFiltroMes = lista.length;
 
     // filtro de preferência de mês: mantém sugestões que INICIAM num mês escolhido
-    if (estado.mesesPreferidos && estado.mesesPreferidos.length) {
+    const temFiltroMes = estado.mesesPreferidos && estado.mesesPreferidos.length;
+    if (temFiltroMes) {
       const meses = new Set(estado.mesesPreferidos);
       lista = lista.filter((s) => meses.has(s.inicioFerias.getMonth()));
     }
@@ -275,11 +288,37 @@ const App = (function () {
     const container = $("#lista-resultados");
     container.innerHTML = "";
     if (!topo.length) {
-      container.appendChild(el("p", "vazio",
-        "Nenhuma opção sem colisão foi encontrada para os dias restantes. Tente outro modo ou finalize."));
+      container.appendChild(mensagemVazio(temFiltroMes, totalAntesFiltroMes > 0));
       return;
     }
     topo.forEach((r, i) => container.appendChild(cardResultado(r, i)));
+  }
+
+  /* Mensagem quando a lista fica vazia, com ação apropriada ao motivo. */
+  function mensagemVazio(temFiltroMes, haviaAntesDoFiltro) {
+    const box = el("div", "vazio-box");
+
+    if (temFiltroMes && haviaAntesDoFiltro) {
+      // o filtro de mês foi o responsável por zerar a lista
+      const nomes = estado.mesesPreferidos.slice().sort((a, b) => a - b).map(nomeMesExtenso).join(", ");
+      box.appendChild(el("p", "vazio",
+        `😕 Nenhuma opção de <strong>${estado.dias} dias</strong> começa em <strong>${nomes}</strong>` +
+        (estado.etapa === 2 ? ` sem colidir com o 1º período` : ``) + `.`));
+      const btn = el("button", "btn-opcao", "📅 Escolher outros meses (ou todos)");
+      btn.addEventListener("click", () => {
+        renderPreferenciaMes();
+        mostrarTela("tela-mes");
+      });
+      box.appendChild(btn);
+    } else if (estado.etapa === 2) {
+      // 2ª etapa sem filtro de mês: colisão com o 1º período
+      box.appendChild(el("p", "vazio",
+        `😕 Nenhuma opção de <strong>${estado.dias} dias</strong> foi encontrada sem colidir com o 1º período. ` +
+        `Tente outro modo de cálculo ou finalize o plano.`));
+    } else {
+      box.appendChild(el("p", "vazio", "Nenhuma sugestão encontrada."));
+    }
+    return box;
   }
 
   function cardResultado(r, i) {
@@ -395,9 +434,10 @@ const App = (function () {
       b.addEventListener("click", () => {
         estado.etapa = 2;
         estado.dias = dias;
-        estado.modo = "corridas"; // recomeça no modo padrão para a nova etapa
-        renderResultados();
-        mostrarTela("tela-resultados");
+        estado.modo = "corridas";        // recomeça no modo padrão para a nova etapa
+        estado.mesesPreferidos = [];     // nova etapa recomeça sem filtro de mês
+        renderPreferenciaMes();          // também pergunta preferência de mês no 2º período
+        mostrarTela("tela-mes");
       });
       wrap.appendChild(b);
     });
