@@ -169,7 +169,12 @@ window.CALENDARIOS[2027] = {
         "Ubatuba":              [{ data: "2027-09-13", nome: "Feriado municipal (Ubatuba)", tipo: "feriado" },
                                  { data: "2027-10-28", nome: "Feriado municipal (Ubatuba)", tipo: "feriado" }],
         "Valinhos":             [{ data: "2027-01-20", nome: "Feriado municipal (Valinhos)", tipo: "feriado" },
-                                 { data: "2027-05-28", nome: "Feriado municipal (Valinhos)", tipo: "feriado" }]
+                                 { data: "2027-05-28", nome: "Feriado municipal (Valinhos)", tipo: "feriado" }],
+        "Monte Negro/RO":       [{ data: "2027-01-04", nome: "Feriado municipal (Monte Negro/RO)", tipo: "feriado" },
+                                 { data: "2027-02-14", nome: "Feriado municipal (Monte Negro/RO)", tipo: "feriado" },
+                                 { data: "2027-03-19", nome: "Feriado municipal (Monte Negro/RO)", tipo: "feriado" },
+                                 { data: "2027-06-18", nome: "Feriado municipal (Monte Negro/RO)", tipo: "feriado" },
+                                 { data: "2027-05-27", nome: "Corpus Christi (Monte Negro/RO)", tipo: "feriado" }]
       }
     }
   }
