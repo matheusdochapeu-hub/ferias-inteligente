@@ -138,3 +138,21 @@ arquivos de feriados correspondentes.
 > novembro, gera o rascunho do ano seguinte (nacionais + móveis calculados por fórmula,
 > fixos replicados, facultativos marcados como "previsão") e abre um Pull Request para
 > revisão humana. Esta refatoração para JSON é a base que viabiliza essa geração automática.
+
+### 📐 Feriados móveis calculados por fórmula (`js/moveis.js`)
+Os feriados que dependem da Páscoa são calculados **localmente, sem API**, pelo algoritmo de
+Meeus/Jones/Butcher (variação do método de Gauss). O módulo funciona no navegador e no
+Node (é o que o robô da Parte 3 usará):
+
+```js
+const Moveis = require("./js/moveis.js"); // ou window.Moveis no navegador
+Moveis.datasMoveisISO(2028);
+// { pascoa:"2028-04-16", carnavalSegunda:"2028-02-28", carnavalTerca:"2028-02-29",
+//   quartaDeCinzas:"2028-03-01", sextaFeiraSanta:"2028-04-14", corpusChristi:"2028-06-15" }
+
+Moveis.entradasParaJSON(2028); // entradas já no formato dos JSON de feriados
+```
+
+Derivadas a partir do Domingo de Páscoa: Carnaval (−48/−47 dias), Quarta de Cinzas (−46),
+Sexta-feira Santa (−2), Corpus Christi (+60). Validado contra as datas oficiais de 2024–2035
+e contra os dados de 2027 já presentes no app.
