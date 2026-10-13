@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Férias Inteligente — Servidores Públicos (2027)</title>
+  <meta name="description" content="Descubra as melhores datas para tirar férias e fazer emendas de feriados — para servidores da Prefeitura de Ribeirão Preto e da USP." />
+  <link rel="stylesheet" href="css/estilo.css" />
+</head>
+<body>
+  <header class="topo">
+    <h1>🏖️ Férias Inteligente</h1>
+    <p class="subtitulo">As melhores datas para tirar férias e emendar feriados — Servidores Públicos · 2027</p>
+  </header>
+
+  <main>
+    <!-- TELA 1: ÓRGÃO -->
+    <section id="tela-orgao" class="tela ativa">
+      <h2>Você é servidor de qual órgão?</h2>
+      <div class="grid-botoes">
+        <button id="btn-pmrp" class="btn-opcao grande">
+          🏛️ Servidor da Prefeitura Municipal de Ribeirão Preto
+        </button>
+        <button id="btn-usp" class="btn-opcao grande">
+          🎓 Servidor USP
+        </button>
+      </div>
+    </section>
+
+    <!-- TELA 2: CIDADE (USP) -->
+    <section id="tela-cidade" class="tela">
+      <h2>Em qual cidade você trabalha?</h2>
+      <p class="ajuda">Os feriados municipais mudam conforme a cidade da sua unidade USP.</p>
+      <div id="grid-cidades" class="grid-botoes grid-cidades"></div>
+      <button class="btn-voltar" data-voltar="tela-orgao">← Voltar</button>
+    </section>
+
+    <!-- TELA 3: DIAS -->
+    <section id="tela-dias" class="tela">
+      <h2>Quantos dias de férias você pretende tirar?</h2>
+      <p id="info-ente" class="ajuda destaque"></p>
+      <div class="grid-botoes grid-dias">
+        <button class="btn-opcao btn-dias" data-dias="10">10 dias</button>
+        <button class="btn-opcao btn-dias" data-dias="15">15 dias</button>
+        <button class="btn-opcao btn-dias" data-dias="20">20 dias</button>
+        <button class="btn-opcao btn-dias" data-dias="30">30 dias</button>
+      </div>
+      <button class="btn-voltar" data-voltar="tela-orgao">← Voltar ao início</button>
+    </section>
+
+    <!-- TELA 4: RESULTADOS -->
+    <section id="tela-resultados" class="tela">
+      <div id="res-cabecalho" class="res-cabecalho"></div>
+
+      <div class="abas">
+        <button id="aba-corridas" class="aba ativa">📅 Férias corridas (emendas simples)</button>
+        <button id="aba-abonadas" class="aba">✨ Com abonadas (máximo em casa)</button>
+      </div>
+
+      <div id="info-pagamento" class="info-box"></div>
+      <div id="aviso-cinzas" class="info-box info-box-amarelo"></div>
+
+      <p class="ajuda">Lista ordenada da <strong>melhor</strong> para a pior opção do ano:</p>
+      <div id="lista-resultados" class="lista-resultados"></div>
+
+      <button class="btn-voltar" data-voltar="tela-dias">← Mudar nº de dias</button>
+      <button class="btn-voltar" data-voltar="tela-orgao">← Recomeçar</button>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <p>⚠️ Ferramenta de apoio ao planejamento. Confira sempre o calendário oficial do seu órgão.
+       Pontos facultativos da PMRP para 2027 sujeitos a confirmação por Decreto Municipal.</p>
+  </footer>
+
+  <!-- Dados e lógica -->
+  <script src="data/feriados-2027.js"></script>
+  <script src="js/motor.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
