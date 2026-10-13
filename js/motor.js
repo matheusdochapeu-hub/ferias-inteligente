@@ -121,7 +121,7 @@ const Motor = (function () {
   /* Avalia iniciar as férias numa data. Férias são dias CORRIDOS de calendário.
    * Expande o bloco de descanso incorporando folgas E pontos facultativos
    * colados nas pontas (facultativo não custa nada). */
-  function avaliarInicio(inicio, diasFerias, mapa, modo) {
+  function avaliarInicio(inicio, diasFerias, mapa, modo, restricoes) {
     const cfg = configModo(modo);
     const fimFerias = addDias(inicio, diasFerias - 1);
 
@@ -154,7 +154,7 @@ const Motor = (function () {
     registrarEmendasPonta(res, inicio, fimFerias, mapa);
 
     // Aplica recursos (abonada/doação) para furar dias úteis de ponte.
-    if (cfg.usarAbonadas || cfg.usarDoacao) aplicarRecursos(res, mapa, cfg);
+    if (cfg.usarAbonadas || cfg.usarDoacao) aplicarRecursos(res, mapa, cfg, restricoes || {});
 
     res.totalDescanso = diffDias(res.blocoInicio, res.blocoFim) + 1;
     res.totalAbonadas = res.abonadas.length;
@@ -197,20 +197,30 @@ const Motor = (function () {
    * um dia livre (fim de semana / feriado / ponto facultativo).
    * Como as pontas podem estar em meses diferentes, é possível usar duas
    * abonadas (uma em cada mês) numa mesma janela de férias. */
-  function aplicarRecursos(res, mapa, cfg) {
-    const abonadasPorMes = {}; // "AAAA-MM" -> qtd de abonadas já usadas no mês
+  function aplicarRecursos(res, mapa, cfg, restricoes) {
+    const abonadasPorMes = {}; // "AAAA-MM" -> qtd de abonadas já usadas NESTE período
+    const mesesJaUsados = restricoes.mesesAbonadaUsados || new Set(); // de outro período do plano
+    const doacoesPlano = restricoes.doacoesUsadas || []; // Date[] já marcadas no plano
+    const DIST_DOACAO_DIAS = 90; // doação de sangue: 1 a cada ~3 meses
 
     function abonadasNoMes(mesKey) { return abonadasPorMes[mesKey] || 0; }
+
+    // doação só é permitida se estiver a >=90 dias de qualquer doação já no plano
+    function doacaoPermitida(dia) {
+      return doacoesPlano.every((d) => Math.abs(diffDias(d, dia)) >= DIST_DOACAO_DIAS);
+    }
 
     // tenta reservar um recurso para "comprar" o dia (prioriza abonada, senão doação)
     function reservar(dia) {
       const mesKey = iso(dia).slice(0, 7);
-      if (cfg.usarAbonadas && abonadasNoMes(mesKey) < 1 && res.abonadas.length < 6) {
+      // abonada: 1 por mês neste período E o mês não pode ter sido usado em outro período
+      if (cfg.usarAbonadas && abonadasNoMes(mesKey) < 1 && !mesesJaUsados.has(mesKey) && res.abonadas.length < 6) {
         abonadasPorMes[mesKey] = abonadasNoMes(mesKey) + 1;
         res.abonadas.push({ dt: new Date(dia), motivo: "Abonada (ponte)" });
         return "abonada";
       }
-      if (cfg.usarDoacao && res.doacoes.length < 1) {
+      // doação: 1 por período e respeitando 3 meses de distância das do plano
+      if (cfg.usarDoacao && res.doacoes.length < 1 && doacaoPermitida(dia)) {
         res.doacoes.push({ dt: new Date(dia), motivo: "Doação de sangue (ponte)" });
         return "doacao";
       }
@@ -314,34 +324,55 @@ const Motor = (function () {
       + res.abonadas.length * 0.8 + res.doacoes.length * 0.4;
   }
 
-  /* Gera e ordena todas as sugestões do ano para o modo escolhido. */
-  function calcular(enteId, cidade, diasFerias, modo) {
+  /* Gera e ordena todas as sugestões do ano para o modo escolhido.
+   *
+   * restricoes (opcional) — usado no fracionamento (2º período de férias):
+   *   {
+   *     diasBloqueados: Set<string ISO>,  // dias cobertos por outro período já
+   *                                       // escolhido (bloco inteiro). Sugestões
+   *                                       // que toquem qualquer um são descartadas.
+   *     mesesAbonadaUsados: Set<"AAAA-MM">, // meses em que já há abonada marcada
+   *     doacoesUsadas: [Date],            // doações já marcadas no plano
+   *   }
+   */
+  function calcular(enteId, cidade, diasFerias, modo, restricoes) {
     const mapa = montarCalendario(enteId, cidade);
     const inicioAno = new Date(2027, 0, 1);
     const fimAno = new Date(2027, 11, 31);
     const candidatos = [];
+    const r = restricoes || {};
 
     for (let d = new Date(inicioAno); d <= fimAno; d = addDias(d, 1)) {
       const c = classificar(d, mapa);
       // Não iniciar férias em dia já livre (folga/facultativo) — desperdício.
       if (c.estado === "folga" || c.estado === "facultativo") continue;
       if (addDias(d, diasFerias - 1) > fimAno) break;
-      candidatos.push(avaliarInicio(d, diasFerias, mapa, modo));
+
+      const sug = avaliarInicio(d, diasFerias, mapa, modo, r);
+      // Descarta sugestões cujo BLOCO toque qualquer dia bloqueado (regra B).
+      if (r.diasBloqueados && blocoColide(sug, r.diasBloqueados)) continue;
+      candidatos.push(sug);
     }
 
     candidatos.sort((a, b) => b.pontuacao - a.pontuacao);
 
-    // Dedup por BLOCO final; entre blocos iguais, mantém o de maior pontuação
-    // (que já vem primeiro por causa do sort).
     const vistos = new Set();
     const unicos = [];
-    for (const r of candidatos) {
-      const chaveBloco = iso(r.blocoInicio) + "_" + iso(r.blocoFim);
+    for (const sug of candidatos) {
+      const chaveBloco = iso(sug.blocoInicio) + "_" + iso(sug.blocoFim);
       if (vistos.has(chaveBloco)) continue;
       vistos.add(chaveBloco);
-      unicos.push(r);
+      unicos.push(sug);
     }
     return unicos;
+  }
+
+  /* Verifica se o bloco de folga de uma sugestão toca algum dia bloqueado. */
+  function blocoColide(sug, diasBloqueados) {
+    for (let d = new Date(sug.blocoInicio); d <= sug.blocoFim; d = addDias(d, 1)) {
+      if (diasBloqueados.has(iso(d))) return true;
+    }
+    return false;
   }
 
   return {

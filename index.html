@@ -72,11 +72,43 @@
         </button>
       </div>
 
+      <div id="aviso-plano" class="info-box info-box-verde" style="display:none"></div>
       <div id="info-pagamento" class="info-box"></div>
       <div id="aviso-cinzas" class="info-box info-box-amarelo"></div>
 
-      <p class="ajuda">Lista ordenada da <strong>melhor</strong> para a pior opção do ano:</p>
+      <p class="ajuda">Lista ordenada da <strong>melhor</strong> para a pior opção do ano.
+         Clique em <strong>“✓ Escolher este período”</strong> na opção desejada.</p>
       <div id="lista-resultados" class="lista-resultados" role="region" aria-live="polite" aria-label="Sugestões de férias"></div>
+    </section>
+
+    <!-- TELA 5: DECISÃO (continuar ou finalizar) -->
+    <section id="tela-decisao" class="tela">
+      <div id="decisao-resumo" class="info-box info-box-verde"></div>
+      <h2 id="decisao-pergunta">Você quer selecionar os dias restantes?</h2>
+      <p class="ajuda">Você pode planejar o segundo período agora ou finalizar com o que já escolheu.</p>
+      <div id="decisao-botoes" class="grid-botoes"></div>
+      <button class="btn-voltar" data-voltar="tela-resultados">⬅️ Voltar às opções</button>
+    </section>
+
+    <!-- TELA 6: PLANO FINAL -->
+    <section id="tela-final" class="tela">
+      <div class="nav-topo nao-imprimir">
+        <button class="btn-voltar" data-voltar="tela-orgao">🔄 Novo plano</button>
+        <button id="btn-pdf" class="btn-voltar btn-pdf">🖨️ Imprimir / Salvar em PDF</button>
+      </div>
+
+      <h2>🏖️ Seu plano de férias 2027</h2>
+      <div id="final-cabecalho" class="res-cabecalho"></div>
+      <div id="final-resumo" class="final-resumo"></div>
+      <div id="final-sobra" class="info-box"></div>
+
+      <h3 class="final-sub">Períodos escolhidos</h3>
+      <div id="final-periodos"></div>
+
+      <h3 class="final-sub">Como usar abonadas e doações</h3>
+      <div id="final-instrucoes" class="info-box"></div>
+
+      <p class="rodape-final">Documento gerado pelo app Férias Inteligente · confira sempre o calendário oficial do seu órgão.</p>
     </section>
   </main>
 

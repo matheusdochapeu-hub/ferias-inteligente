@@ -1,15 +1,24 @@
 /* =============================================================================
  * CONTROLE DE INTERFACE (navegação entre telas e renderização)
+ * -----------------------------------------------------------------------------
+ * Fluxo:
+ *   órgão -> (cidade, se USP) -> dias -> resultados -> [escolher período]
+ *     -> se sobram dias: pergunta "continuar com N dias restantes?" ou finalizar
+ *     -> página final (resumo do plano + calendários + PDF)
  * ===========================================================================*/
 const App = (function () {
   const H = Motor.helpers;
 
   const estado = {
-    ente: null,     // "pmrp" | "usp"
-    cidade: null,   // apenas USP
-    dias: null,     // 10 | 15 | 20 | 30
-    modo: "corridas" // "corridas" | "abonadas"
+    ente: null,       // "pmrp" | "usp"
+    cidade: null,     // apenas USP
+    dias: null,       // dias da ETAPA atual (10|15|20|30 ou o que sobrou)
+    modo: "corridas", // modo de cálculo atual
+    plano: [],        // períodos já escolhidos: [{ sugestao, modo, dias }]
+    etapa: 1          // 1 = primeira seleção, 2 = segunda (dias restantes)
   };
+
+  const TOTAL_FERIAS = 30; // direito total de dias no ano
 
   const $ = (sel) => document.querySelector(sel);
   const el = (tag, cls, html) => {
@@ -25,7 +34,7 @@ const App = (function () {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
-  /* ---------- Tela 1: escolha do órgão ---------- */
+  /* ---------- Inicialização / listeners ---------- */
   function iniciar() {
     $("#btn-pmrp").addEventListener("click", () => {
       estado.ente = "pmrp";
@@ -40,16 +49,14 @@ const App = (function () {
       mostrarTela("tela-cidade");
     });
 
-    // navegação "voltar" / "recomeçar"
     document.querySelectorAll("[data-voltar]").forEach((b) =>
       b.addEventListener("click", () => {
         const alvo = b.getAttribute("data-voltar");
-        if (alvo === "tela-orgao") resetar(); // recomeçar zera tudo
+        if (alvo === "tela-orgao") resetar();
         mostrarTela(alvo);
       })
     );
 
-    // dias de férias
     document.querySelectorAll(".btn-dias").forEach((b) =>
       b.addEventListener("click", () => {
         estado.dias = Number(b.getAttribute("data-dias"));
@@ -58,24 +65,28 @@ const App = (function () {
       })
     );
 
-    // abas de modo (4 modos)
     document.querySelectorAll(".aba[data-modo]").forEach((b) =>
       b.addEventListener("click", () => {
         estado.modo = b.getAttribute("data-modo");
         renderResultados();
       })
     );
+
+    // imprimir / salvar o plano em PDF (usa a caixa de impressão do navegador)
+    const pdf = $("#btn-pdf");
+    if (pdf) pdf.addEventListener("click", () => window.print());
   }
 
-  /* Zera o estado ao recomeçar, para não vazar escolhas entre sessões. */
   function resetar() {
     estado.ente = null;
     estado.cidade = null;
     estado.dias = null;
     estado.modo = "corridas";
+    estado.plano = [];
+    estado.etapa = 1;
   }
 
-  /* ---------- Tela 2 (USP): escolha da cidade ---------- */
+  /* ---------- Tela cidade (USP) ---------- */
   function renderCidades() {
     const wrap = $("#grid-cidades");
     wrap.innerHTML = "";
@@ -93,7 +104,6 @@ const App = (function () {
     });
   }
 
-  /* ---------- Tela 3: dias de férias (mostra qual órgão/cidade) ---------- */
   function renderInfoEnte() {
     const ente = window.CALENDARIOS[2027].entes[estado.ente];
     let txt = ente.nome;
@@ -101,43 +111,71 @@ const App = (function () {
     $("#info-ente").textContent = txt;
   }
 
-  /* ---------- Tela 4: resultados ---------- */
+  /* ---------- Restrições do plano (para o 2º período) ---------- */
+  function restricoesDoPlano() {
+    const diasBloqueados = new Set();
+    const mesesAbonadaUsados = new Set();
+    const doacoesUsadas = [];
+    estado.plano.forEach(({ sugestao }) => {
+      // bloqueia o bloco inteiro (regra B)
+      for (let d = new Date(sugestao.blocoInicio); d <= sugestao.blocoFim; d = H.addDias(d, 1)) {
+        diasBloqueados.add(H.iso(d));
+      }
+      (sugestao.abonadas || []).forEach((a) => mesesAbonadaUsados.add(H.iso(a.dt).slice(0, 7)));
+      (sugestao.doacoes || []).forEach((dc) => doacoesUsadas.push(new Date(dc.dt)));
+    });
+    return { diasBloqueados, mesesAbonadaUsados, doacoesUsadas };
+  }
+
+  /* ---------- Tela resultados ---------- */
   function renderResultados() {
     const ente = window.CALENDARIOS[2027].entes[estado.ente];
+    const etapaTxt = estado.etapa === 2
+      ? ` &nbsp;·&nbsp; <em>2º período — ${estado.dias} dias restantes</em>`
+      : "";
     $("#res-cabecalho").innerHTML =
       `<strong>${ente.nome}</strong>` +
       (estado.ente === "usp" && estado.cidade ? ` — ${estado.cidade}` : "") +
-      ` &nbsp;·&nbsp; ${estado.dias} dias de férias &nbsp;·&nbsp; ano 2027`;
+      ` &nbsp;·&nbsp; ${estado.dias} dias de férias &nbsp;·&nbsp; ano 2027` + etapaTxt;
 
-    // destaque das abas (4 modos) + estado ARIA
     document.querySelectorAll(".aba[data-modo]").forEach((b) => {
       const ativo = b.getAttribute("data-modo") === estado.modo;
       b.classList.toggle("ativa", ativo);
       b.setAttribute("aria-selected", ativo ? "true" : "false");
     });
 
-    // info de pagamento (apenas informativo)
-    $("#info-pagamento").innerHTML =
-      `💰 <strong>Pagamento:</strong> ${ente.pagamento}`;
+    $("#info-pagamento").innerHTML = `💰 <strong>Pagamento:</strong> ${ente.pagamento}`;
 
-    // aviso quarta de cinzas (data vinda dos dados, não hardcoded)
     const cinzasISO = window.CALENDARIOS[2027].quartaDeCinzas;
-    const cinzas = Motor.helpers.parse(cinzasISO);
+    const cinzas = H.parse(cinzasISO);
     $("#aviso-cinzas").innerHTML =
-      `🔸 <strong>Quarta-feira de Cinzas (${Motor.helpers.fmt(cinzas)}/2027):</strong> ` +
+      `🔸 <strong>Quarta-feira de Cinzas (${H.fmt(cinzas)}/2027):</strong> ` +
       `expediente de meio período — ótimo para encurtar o dia, mas não é feriado cheio.`;
 
-    const lista = Motor.calcular(estado.ente, estado.cidade, estado.dias, estado.modo);
-    const topo = lista.slice(0, 20); // melhores 20
+    // aviso do que já foi escolhido (etapa 2)
+    const avisoPlano = $("#aviso-plano");
+    if (estado.plano.length) {
+      const p = estado.plano[0];
+      avisoPlano.style.display = "";
+      avisoPlano.innerHTML =
+        `✅ <strong>1º período já escolhido:</strong> ` +
+        `${H.fmtExt(p.sugestao.inicioFerias)} → ${H.fmtExt(p.sugestao.fimFerias)} ` +
+        `(${p.dias} dias). As opções abaixo já excluem datas que colidem.`;
+    } else {
+      avisoPlano.style.display = "none";
+    }
+
+    const restr = estado.etapa === 2 ? restricoesDoPlano() : null;
+    const lista = Motor.calcular(estado.ente, estado.cidade, estado.dias, estado.modo, restr);
+    const topo = lista.slice(0, 20);
 
     const container = $("#lista-resultados");
     container.innerHTML = "";
-
     if (!topo.length) {
-      container.appendChild(el("p", "vazio", "Nenhuma sugestão encontrada."));
+      container.appendChild(el("p", "vazio",
+        "Nenhuma opção sem colisão foi encontrada para os dias restantes. Tente outro modo ou finalize."));
       return;
     }
-
     topo.forEach((r, i) => container.appendChild(cardResultado(r, i)));
   }
 
@@ -145,7 +183,7 @@ const App = (function () {
     const card = el("div", "card" + (i === 0 ? " card-top" : ""));
 
     const medalha = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
-    const ganhos = r.totalDescanso - r.diasFerias; // folga a mais além dos dias de férias
+    const ganhos = r.totalDescanso - r.diasFerias;
     const cab = el("div", "card-cab");
     cab.innerHTML =
       `<span class="posicao">${medalha}</span>` +
@@ -155,121 +193,202 @@ const App = (function () {
       `</span>`;
     card.appendChild(cab);
 
-    // linha principal: período de férias
-    const periodo = el("div", "linha-periodo");
-    periodo.innerHTML =
-      `🏖️ <strong>Férias:</strong> ${H.fmtExt(r.inicioFerias)} → ${H.fmtExt(r.fimFerias)} ` +
-      `<span class="muted">(${r.diasFerias} dias)</span>`;
-    card.appendChild(periodo);
+    card.appendChild(linhasSugestao(r));
 
-    // bloco total de folga (com emendas)
-    const bloco = el("div", "linha-bloco");
-    bloco.innerHTML =
-      `🧱 <strong>Folga corrida total:</strong> ${H.fmtExt(r.blocoInicio)} → ${H.fmtExt(r.blocoFim)}`;
-    card.appendChild(bloco);
+    card.appendChild(montarCalendarioVisual(r, estado.ente, estado.cidade));
 
-    // emendas (feriados grudados)
-    if (r.detalhesEmenda && r.detalhesEmenda.length) {
-      const em = el("div", "linha-emenda");
-      const itens = r.detalhesEmenda
-        .map((e) => `${H.fmt(e.dt)} (${e.motivo})`)
-        .join(" · ");
-      em.innerHTML = `🔗 <strong>Emendas aproveitadas:</strong> ${itens}`;
-      card.appendChild(em);
-    }
-
-    // abonadas sugeridas
-    if (r.abonadas && r.abonadas.length) {
-      const ab = el("div", "linha-abonada");
-      const itens = r.abonadas.map((a) => H.fmtExt(a.dt)).join(" · ");
-      ab.innerHTML =
-        `✨ <strong>Abonadas sugeridas (${r.abonadas.length}):</strong> ${itens} ` +
-        `<span class="muted">(máx. 6/ano, 1 por mês)</span>`;
-      card.appendChild(ab);
-    }
-
-    // doação de sangue sugerida
-    if (r.doacoes && r.doacoes.length) {
-      const dc = el("div", "linha-doacao");
-      const itens = r.doacoes.map((d) => H.fmtExt(d.dt)).join(" · ");
-      dc.innerHTML =
-        `🩸 <strong>Doação de sangue sugerida (${r.doacoes.length}):</strong> ${itens} ` +
-        `<span class="muted">(1 folga a cada 3 meses)</span>`;
-      card.appendChild(dc);
-    }
-
-    // meios períodos / pontes facultativas aproveitadas
-    if (r.meiosPeriodo && r.meiosPeriodo.length) {
-      const mp = el("div", "linha-meio");
-      const itens = r.meiosPeriodo.map((m) => `${H.fmt(m.dt)} (${m.motivo})`).join(" · ");
-      mp.innerHTML = `🕑 <strong>Pontes/meio período:</strong> ${itens}`;
-      card.appendChild(mp);
-    }
-
-    // alerta de feriado "desperdiçado"
-    if (r.feriadosDesperdicados > 0) {
-      const al = el("div", "linha-alerta");
-      al.innerHTML =
-        `⚠️ ${r.feriadosDesperdicados} feriado(s) caíram dentro das férias ` +
-        `(dias que você teria de folga de qualquer forma).`;
-      card.appendChild(al);
-    }
-
-    // calendário visual
-    card.appendChild(montarCalendarioVisual(r));
+    // botão de escolher este período
+    const acoes = el("div", "card-acoes");
+    const btn = el("button", "btn-escolher", "✓ Escolher este período");
+    btn.addEventListener("click", () => escolherPeriodo(r));
+    acoes.appendChild(btn);
+    card.appendChild(acoes);
 
     return card;
   }
 
-  /* Gera um minicalendário dos meses cobertos pelo bloco de folga, pintando
-   * cada dia conforme seu papel (férias, feriado, abonada, doação, ponte...). */
-  function montarCalendarioVisual(r) {
-    const mapa = Motor.montarCalendario(estado.ente, estado.cidade);
+  /* Linhas descritivas de uma sugestão (reutilizadas na página final). */
+  function linhasSugestao(r) {
+    const frag = document.createDocumentFragment();
 
-    // Conjuntos auxiliares para classificação rápida
+    const periodo = el("div", "linha-periodo");
+    periodo.innerHTML =
+      `🏖️ <strong>Férias:</strong> ${H.fmtExt(r.inicioFerias)} → ${H.fmtExt(r.fimFerias)} ` +
+      `<span class="muted">(${r.diasFerias} dias)</span>`;
+    frag.appendChild(periodo);
+
+    const bloco = el("div", "linha-bloco");
+    bloco.innerHTML =
+      `🧱 <strong>Folga corrida total:</strong> ${H.fmtExt(r.blocoInicio)} → ${H.fmtExt(r.blocoFim)}`;
+    frag.appendChild(bloco);
+
+    if (r.detalhesEmenda && r.detalhesEmenda.length) {
+      const em = el("div", "linha-emenda");
+      em.innerHTML = `🔗 <strong>Emendas aproveitadas:</strong> ` +
+        r.detalhesEmenda.map((e) => `${H.fmt(e.dt)} (${e.motivo})`).join(" · ");
+      frag.appendChild(em);
+    }
+    if (r.abonadas && r.abonadas.length) {
+      const ab = el("div", "linha-abonada");
+      ab.innerHTML = `✨ <strong>Abonadas sugeridas (${r.abonadas.length}):</strong> ` +
+        r.abonadas.map((a) => H.fmtExt(a.dt)).join(" · ") +
+        ` <span class="muted">(máx. 6/ano, 1 por mês)</span>`;
+      frag.appendChild(ab);
+    }
+    if (r.doacoes && r.doacoes.length) {
+      const dc = el("div", "linha-doacao");
+      dc.innerHTML = `🩸 <strong>Doação de sangue sugerida (${r.doacoes.length}):</strong> ` +
+        r.doacoes.map((d) => H.fmtExt(d.dt)).join(" · ") +
+        ` <span class="muted">(1 folga a cada 3 meses)</span>`;
+      frag.appendChild(dc);
+    }
+    if (r.meiosPeriodo && r.meiosPeriodo.length) {
+      const mp = el("div", "linha-meio");
+      mp.innerHTML = `🕑 <strong>Pontes/meio período:</strong> ` +
+        r.meiosPeriodo.map((m) => `${H.fmt(m.dt)} (${m.motivo})`).join(" · ");
+      frag.appendChild(mp);
+    }
+    if (r.feriadosDesperdicados > 0) {
+      const al = el("div", "linha-alerta");
+      al.innerHTML = `⚠️ ${r.feriadosDesperdicados} feriado(s) caíram dentro das férias ` +
+        `(dias que você teria de folga de qualquer forma).`;
+      frag.appendChild(al);
+    }
+    return frag;
+  }
+
+  /* ---------- Escolha de período e decisão de continuar/finalizar ---------- */
+  function escolherPeriodo(sugestao) {
+    estado.plano.push({ sugestao, modo: estado.modo, dias: estado.dias });
+
+    const usados = estado.plano.reduce((s, p) => s + p.dias, 0);
+    const restantes = TOTAL_FERIAS - usados;
+
+    // se ainda sobram dias E ainda estamos na 1ª etapa, pergunta
+    if (restantes > 0 && estado.etapa === 1) {
+      renderDecisao(restantes);
+      mostrarTela("tela-decisao");
+    } else {
+      renderFinal();
+      mostrarTela("tela-final");
+    }
+  }
+
+  function renderDecisao(restantes) {
+    const p = estado.plano[0];
+    $("#decisao-resumo").innerHTML =
+      `✅ <strong>1º período escolhido:</strong> ${H.fmtExt(p.sugestao.inicioFerias)} → ` +
+      `${H.fmtExt(p.sugestao.fimFerias)} (${p.dias} dias).`;
+    $("#decisao-pergunta").textContent =
+      `Você quer selecionar os ${restantes} dias restantes?`;
+
+    const wrap = $("#decisao-botoes");
+    wrap.innerHTML = "";
+    const simBtn = el("button", "btn-opcao grande", `📅 Sim, planejar os ${restantes} dias restantes`);
+    simBtn.addEventListener("click", () => {
+      estado.etapa = 2;
+      estado.dias = restantes;
+      estado.modo = "corridas"; // recomeça no modo padrão para a nova etapa
+      renderResultados();
+      mostrarTela("tela-resultados");
+    });
+    const fimBtn = el("button", "btn-opcao grande btn-finalizar", "🏁 Finalizar meu plano");
+    fimBtn.addEventListener("click", () => {
+      renderFinal();
+      mostrarTela("tela-final");
+    });
+    wrap.appendChild(simBtn);
+    wrap.appendChild(fimBtn);
+  }
+
+  /* ---------- Página final ---------- */
+  function renderFinal() {
+    const ente = window.CALENDARIOS[2027].entes[estado.ente];
+    const totalDias = estado.plano.reduce((s, p) => s + p.dias, 0);
+    const totalDescanso = estado.plano.reduce((s, p) => s + p.sugestao.totalDescanso, 0);
+    const totalAbon = estado.plano.reduce((s, p) => s + (p.sugestao.abonadas || []).length, 0);
+    const totalDoa = estado.plano.reduce((s, p) => s + (p.sugestao.doacoes || []).length, 0);
+
+    $("#final-cabecalho").innerHTML =
+      `<strong>${ente.nome}</strong>` +
+      (estado.ente === "usp" && estado.cidade ? ` — ${estado.cidade}` : "") +
+      ` · ano 2027`;
+
+    // resumo numérico
+    const resumo = $("#final-resumo");
+    resumo.innerHTML =
+      `<div class="final-num"><span>${totalDias}</span>dias de férias usados` +
+      ` <small>(de ${TOTAL_FERIAS})</small></div>` +
+      `<div class="final-num"><span>${totalDescanso}</span>dias de descanso no total</div>` +
+      `<div class="final-num"><span>${totalAbon}</span>abonadas</div>` +
+      `<div class="final-num"><span>${totalDoa}</span>doações de sangue</div>`;
+
+    const sobra = TOTAL_FERIAS - totalDias;
+    $("#final-sobra").innerHTML = sobra > 0
+      ? `ℹ️ Você ainda tem <strong>${sobra} dias</strong> de férias não planejados neste app.`
+      : `✅ Você planejou todos os ${TOTAL_FERIAS} dias de férias do ano.`;
+
+    // períodos
+    const cont = $("#final-periodos");
+    cont.innerHTML = "";
+    estado.plano.forEach((p, idx) => {
+      const bloco = el("div", "final-periodo");
+      bloco.appendChild(el("h3", null, `Período ${idx + 1} — ${p.dias} dias`));
+      bloco.appendChild(linhasSugestao(p.sugestao));
+      bloco.appendChild(montarCalendarioVisual(p.sugestao, estado.ente, estado.cidade));
+      cont.appendChild(bloco);
+    });
+
+    // instruções de abonadas/doações consolidadas
+    const instr = $("#final-instrucoes");
+    const todasAbon = estado.plano.flatMap((p) => (p.sugestao.abonadas || []).map((a) => a.dt));
+    const todasDoa = estado.plano.flatMap((p) => (p.sugestao.doacoes || []).map((d) => d.dt));
+    let html = "";
+    if (todasAbon.length) {
+      html += `<p>✨ <strong>Abonadas a solicitar (${todasAbon.length}):</strong> ` +
+        todasAbon.map((d) => H.fmtExt(d)).join(" · ") +
+        ` — lembre-se: no máximo 1 por mês e 6 no ano.</p>`;
+    }
+    if (todasDoa.length) {
+      html += `<p>🩸 <strong>Doações de sangue (${todasDoa.length}):</strong> ` +
+        todasDoa.map((d) => H.fmtExt(d)).join(" · ") +
+        ` — respeite o intervalo de 3 meses entre doações.</p>`;
+    }
+    if (!html) html = `<p>Você não usou abonadas nem doação de sangue neste plano (apenas emendas de feriados).</p>`;
+    instr.innerHTML = html;
+  }
+
+  /* ---------- Minicalendário (recebe ente/cidade p/ funcionar em qualquer tela) ---------- */
+  function montarCalendarioVisual(r, ente, cidade) {
+    const mapa = Motor.montarCalendario(ente, cidade);
     const setFerias = intervaloSet(r.inicioFerias, r.fimFerias);
     const setAbonada = new Set((r.abonadas || []).map((a) => H.iso(a.dt)));
     const setDoacao = new Set((r.doacoes || []).map((a) => H.iso(a.dt)));
     const setMeio = new Set((r.meiosPeriodo || []).map((a) => H.iso(a.dt)));
 
-    // Meses a exibir: do mês do blocoInicio ao mês do blocoFim
-    const ini = r.blocoInicio;
-    const fim = r.blocoFim;
+    const ini = r.blocoInicio, fim = r.blocoFim;
     const meses = [];
     let cur = new Date(ini.getFullYear(), ini.getMonth(), 1);
     const ultimo = new Date(fim.getFullYear(), fim.getMonth(), 1);
-    while (cur <= ultimo) {
-      meses.push(new Date(cur));
-      cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
-    }
+    while (cur <= ultimo) { meses.push(new Date(cur)); cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1); }
 
     const wrap = el("div", "mini-cal-wrap");
-
     meses.forEach((mref) => {
       const bloco = el("div", "mini-mes");
-      const ano = mref.getFullYear();
-      const mes = mref.getMonth();
-      bloco.appendChild(el("div", "mini-mes-titulo",
-        `${nomeMesExtenso(mes)} ${ano}`));
-
-      // cabeçalho dos dias da semana
+      const ano = mref.getFullYear(), mes = mref.getMonth();
+      bloco.appendChild(el("div", "mini-mes-titulo", `${nomeMesExtenso(mes)} ${ano}`));
       const head = el("div", "mini-grid mini-head");
-      ["D", "S", "T", "Q", "Q", "S", "S"].forEach((d) =>
-        head.appendChild(el("span", "mini-dow", d)));
+      ["D", "S", "T", "Q", "Q", "S", "S"].forEach((d) => head.appendChild(el("span", "mini-dow", d)));
       bloco.appendChild(head);
-
       const grid = el("div", "mini-grid");
-      // espaços em branco até o 1º dia cair no dia da semana certo
       const primeiro = new Date(ano, mes, 1);
       for (let i = 0; i < primeiro.getDay(); i++) grid.appendChild(el("span", "mini-dia vazio", ""));
-
       const diasNoMes = new Date(ano, mes + 1, 0).getDate();
       for (let dia = 1; dia <= diasNoMes; dia++) {
         const dt = new Date(ano, mes, dia);
         const k = H.iso(dt);
         const classe = classeDoDia(dt, k, { mapa, setFerias, setAbonada, setDoacao, setMeio, ini, fim });
         const cel = el("span", "mini-dia " + classe, String(dia));
-        // dica (tooltip) com o motivo
         const titulo = tituloDoDia(dt, k, mapa, setFerias, setAbonada, setDoacao);
         if (titulo) cel.title = titulo;
         grid.appendChild(cel);
@@ -278,7 +397,6 @@ const App = (function () {
       wrap.appendChild(bloco);
     });
 
-    // legenda
     const leg = el("div", "mini-legenda");
     leg.innerHTML =
       `<span class="lg lg-ferias"></span>Férias` +
@@ -289,7 +407,6 @@ const App = (function () {
       `<span class="lg lg-meio"></span>Meio período` +
       `<span class="lg lg-fds"></span>Fim de semana`;
     wrap.appendChild(leg);
-
     return wrap;
   }
 
@@ -299,14 +416,11 @@ const App = (function () {
     return s;
   }
 
-  /* Decide a classe visual de um dia. Prioridade: fora do bloco < fds < ponte
-   * < feriado < doação < abonada < férias (as "ações do servidor" ficam no topo). */
   function classeDoDia(dt, k, ctx) {
     const dentroBloco = dt >= new Date(ctx.ini.getFullYear(), ctx.ini.getMonth(), ctx.ini.getDate())
       && dt <= ctx.fim;
     if (!dentroBloco) {
-      // dia fora do período sugerido: mostra apagado (contexto)
-      if (ctx.setFerias.has(k)) return "ferias"; // segurança
+      if (ctx.setFerias.has(k)) return "ferias";
       return H.ehFimDeSemana(dt) ? "fora fds-fora" : "fora";
     }
     if (ctx.setFerias.has(k)) return "ferias";
@@ -317,7 +431,7 @@ const App = (function () {
     if (H.ehFimDeSemana(dt)) return "fds";
     if (c.estado === "facultativo") return "ponte";
     if (c.estado === "meio" || ctx.setMeio.has(k)) return "meio";
-    return "util-dentro"; // dia útil dentro do bloco mas sem marcação (raro)
+    return "util-dentro";
   }
 
   function tituloDoDia(dt, k, mapa, setFerias, setAbonada, setDoacao) {
