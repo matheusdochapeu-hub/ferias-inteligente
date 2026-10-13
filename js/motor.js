@@ -188,79 +188,119 @@ const Motor = (function () {
     }
   }
 
-  /* Tenta usar abonadas e/ou doação para transformar dias ÚTEIS de ponte em
-   * folga, grudando mais descanso. Olha até 2 dias úteis consecutivos em cada
-   * ponta; só vale a pena se logo após houver um dia livre (ponte real). */
+  /* Usa abonadas e/ou doação para "comprar" dias ÚTEIS nas pontas do bloco e
+   * grudar mais descanso. Explora AS DUAS pontas, compartilhando o saldo:
+   *   - Abonadas: 1 por mês-calendário (contador por "AAAA-MM").
+   *   - Doação de sangue: 1 por janela.
+   * Um dia útil só é comprado se a compra levar a um ganho real de folga, isto
+   * é, se a extensão (contando este dia e os já comprados nesta ponta) alcançar
+   * um dia livre (fim de semana / feriado / ponto facultativo).
+   * Como as pontas podem estar em meses diferentes, é possível usar duas
+   * abonadas (uma em cada mês) numa mesma janela de férias. */
   function aplicarRecursos(res, mapa, cfg) {
-    const abonadasPorMes = {}; // "AAAA-MM" -> true (1 abonada por mês)
-    let doacaoUsada = false;   // 1 doação por janela
+    const abonadasPorMes = {}; // "AAAA-MM" -> qtd de abonadas já usadas no mês
+
+    function abonadasNoMes(mesKey) { return abonadasPorMes[mesKey] || 0; }
+
+    // tenta reservar um recurso para "comprar" o dia (prioriza abonada, senão doação)
+    function reservar(dia) {
+      const mesKey = iso(dia).slice(0, 7);
+      if (cfg.usarAbonadas && abonadasNoMes(mesKey) < 1 && res.abonadas.length < 6) {
+        abonadasPorMes[mesKey] = abonadasNoMes(mesKey) + 1;
+        res.abonadas.push({ dt: new Date(dia), motivo: "Abonada (ponte)" });
+        return "abonada";
+      }
+      if (cfg.usarDoacao && res.doacoes.length < 1) {
+        res.doacoes.push({ dt: new Date(dia), motivo: "Doação de sangue (ponte)" });
+        return "doacao";
+      }
+      return null;
+    }
 
     function tentar(direcao) {
-      // coleta dias ÚTEIS consecutivos a partir da ponta
-      const uteis = [];
+      // Caminha a partir da ponta somando dias úteis "candidatos" a compra.
+      // Quando encontra um dia livre, confirma a compra de todos os candidatos
+      // acumulados até ali (ponte fechada) e segue incorporando os livres.
       let cursor = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
-      for (let i = 0; i < 2; i++) {
-        const c = classificar(cursor, mapa);
-        if (c.estado === "util") { uteis.push(new Date(cursor)); cursor = addDias(cursor, direcao); }
-        else if (c.estado === "meio") {
-          // meio período: registra como emenda parcial, atravessa mas não gasta recurso
-          res.meiosPeriodo.push({ dt: new Date(cursor), motivo: classificar(cursor, mapa).motivo });
-          cursor = addDias(cursor, direcao);
-          i--; // meio não conta como dia útil a cobrir
-        } else break;
-      }
-      if (!uteis.length) return;
-      // precisa haver dia livre logo após o conjunto de úteis p/ valer a ponte
-      if (!ehLivre(cursor, mapa)) return;
+      let candidatos = [];        // dias úteis ainda não confirmados nesta ponta
+      const MAX_UTEIS_PONTE = 3;  // limite de dias úteis "furados" por ponte
 
-      // ordena os úteis do mais próximo da ponta para o mais distante
-      const ordem = direcao === 1 ? uteis : uteis.slice().reverse();
-      const cobertos = [];
-      for (const dia of ordem) {
-        const mesKey = iso(dia).slice(0, 7);
-        if (cfg.usarAbonadas && !abonadasPorMes[mesKey] && res.abonadas.length < 6) {
-          abonadasPorMes[mesKey] = true;
-          res.abonadas.push({ dt: dia, motivo: "Abonada (ponte)" });
-          cobertos.push(dia);
-        } else if (cfg.usarDoacao && !doacaoUsada) {
-          doacaoUsada = true;
-          res.doacoes.push({ dt: dia, motivo: "Doação de sangue (ponte)" });
-          cobertos.push(dia);
-        } else {
-          break; // não há recurso p/ cobrir este dia -> ponte incompleta
+      while (true) {
+        const c = classificar(cursor, mapa);
+
+        if (c.estado === "util") {
+          if (candidatos.length >= MAX_UTEIS_PONTE) break;
+          candidatos.push(new Date(cursor));
+          cursor = addDias(cursor, direcao);
+          continue;
         }
+
+        if (c.estado === "meio") {
+          // meio período: emenda parcial; não gasta recurso e não bloqueia a ponte
+          res.meiosPeriodo.push({ dt: new Date(cursor), motivo: c.motivo });
+          cursor = addDias(cursor, direcao);
+          continue;
+        }
+
+        if (c.estado === "folga" || c.estado === "facultativo") {
+          // Dia livre: fecha a ponte. Tenta comprar todos os candidatos pendentes.
+          if (candidatos.length) {
+            const reservasFeitas = [];
+            let ok = true;
+            for (const dia of candidatos) {
+              const tipo = reservar(dia);
+              if (!tipo) { ok = false; break; }
+              reservasFeitas.push({ dia, tipo });
+            }
+            if (!ok) {
+              // não deu para comprar todos -> desfaz e encerra esta ponta
+              desfazer(reservasFeitas, abonadasPorMes);
+              break;
+            }
+            candidatos = []; // confirmados; continuam contando como parte do bloco
+          }
+          // incorpora o dia livre e segue (pode haver mais pontes adiante)
+          if (direcao === 1) res.blocoFim = new Date(cursor);
+          else res.blocoInicio = new Date(cursor);
+          cursor = addDias(cursor, direcao);
+          continue;
+        }
+
+        break; // qualquer outro caso encerra
       }
-      // Só estende o bloco se TODOS os dias úteis da ponte foram cobertos.
-      if (cobertos.length === uteis.length) {
-        expandirLivres(res, mapa); // agora o(s) dia(s) coberto(s) viram livres? não:
-        // os dias cobertos não estão no mapa como livres, então estende manualmente
-        if (direcao === 1) {
-          let c2 = addDias(res.blocoFim, 1);
-          // avança sobre os dias cobertos e depois sobre livres
-          while (cobertos.some((x) => +x === +c2) || ehLivre(c2, mapa)) {
-            res.blocoFim = new Date(c2); c2 = addDias(c2, 1);
-          }
-        } else {
-          let c2 = addDias(res.blocoInicio, -1);
-          while (cobertos.some((x) => +x === +c2) || ehLivre(c2, mapa)) {
-            res.blocoInicio = new Date(c2); c2 = addDias(c2, -1);
-          }
-        }
-      } else {
-        // ponte incompleta: desfaz os recursos reservados nesta tentativa
-        cobertos.forEach((dia) => {
+
+      // Após o loop, estende o bloco por sobre os dias comprados + livres,
+      // garantindo que blocoFim/blocoInicio reflitam todos os dias já cobertos.
+      recomputarBloco(res, mapa);
+    }
+
+    function desfazer(reservas) {
+      reservas.forEach(({ dia, tipo }) => {
+        if (tipo === "abonada") {
+          const mesKey = iso(dia).slice(0, 7);
+          abonadasPorMes[mesKey] = Math.max(0, abonadasNoMes(mesKey) - 1);
           res.abonadas = res.abonadas.filter((a) => +a.dt !== +dia);
+        } else if (tipo === "doacao") {
           res.doacoes = res.doacoes.filter((a) => +a.dt !== +dia);
-        });
-        if (cobertos.length) {
-          // libera o flag de doação/mês caso tenha sido marcado
-          doacaoUsada = res.doacoes.length > 0;
         }
-      }
+      });
     }
 
     tentar(1);
     tentar(-1);
+  }
+
+  /* Recalcula blocoInicio/blocoFim cobrindo dias livres E dias comprados
+   * (abonadas/doações), de forma que o bloco seja realmente contíguo. */
+  function recomputarBloco(res, mapa) {
+    const comprados = new Set(
+      res.abonadas.map((a) => +a.dt).concat(res.doacoes.map((d) => +d.dt))
+    );
+    const coberto = (dt) => ehLivre(dt, mapa) || comprados.has(+new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()));
+    let cursor = addDias(res.blocoFim, 1);
+    while (coberto(cursor)) { res.blocoFim = new Date(cursor); cursor = addDias(cursor, 1); }
+    cursor = addDias(res.blocoInicio, -1);
+    while (coberto(cursor)) { res.blocoInicio = new Date(cursor); cursor = addDias(cursor, -1); }
   }
 
   /* Pontuação: maximizar descanso por dia GASTO do saldo (férias+abonada+doação),
