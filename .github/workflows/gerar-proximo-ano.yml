@@ -1,25 +1,33 @@
 name: Gerar rascunho de feriados do próximo ano
 
-# Executa todo 1º de novembro (05:00 UTC = 02:00 no horário de Brasília) e também
-# pode ser disparado manualmente pela aba "Actions". Gera os JSON de feriados do
-# ano seguinte (nacionais + móveis por fórmula; fixos replicados; facultativos
-# como "previsão") e abre um Pull Request para revisão humana.
+# Esquema de REDUNDÂNCIA em duas rodadas (a pedido do responsável):
+#   - 1º de OUTUBRO  -> 1ª geração do ano seguinte (rascunho antecipado).
+#   - 1º de NOVEMBRO -> 2ª rodada: reconfere/atualiza o mesmo rascunho (os
+#     decretos/portarias saem no fim do ano anterior), confirmando os cálculos
+#     e relembrando o que ainda é "previsão".
+# Também pode ser disparado manualmente pela aba "Actions".
+#
+# O ano-alvo é sempre (ano corrente) + 1. Assim o ciclo RESPEITA o calendário:
+# ele só gera 2028 a partir de 2027, 2029 a partir de 2028, etc. — nunca
+# antecipa demais. Se o ano-alvo já existir e estiver confirmado, o gerador
+# apenas garante o índice e a 2ª rodada não sobrescreve correções humanas.
 
 on:
   schedule:
-    - cron: "0 5 1 11 *"   # 1 de novembro, 05:00 UTC
-  workflow_dispatch:        # permite rodar manualmente, quando quiser
+    - cron: "0 5 1 10 *"   # 1 de outubro, 05:00 UTC (1ª rodada)
+    - cron: "0 5 1 11 *"   # 1 de novembro, 05:00 UTC (2ª rodada / reconferência)
+  workflow_dispatch:
     inputs:
       alvo:
-        description: "Ano-alvo a gerar (padrão: molde + 1)"
+        description: "Ano-alvo a gerar (padrão: ano corrente + 1)"
         required: false
       molde:
-        description: "Ano-molde (padrão: maior ano existente)"
+        description: "Ano-molde (padrão: ano corrente)"
         required: false
 
 permissions:
-  contents: write          # para criar a branch/commit
-  pull-requests: write     # para abrir o PR
+  contents: write
+  pull-requests: write
 
 jobs:
   gerar:
@@ -33,42 +41,73 @@ jobs:
         with:
           node-version: "20"
 
-      - name: Gerar rascunho do próximo ano
-        id: gerar
+      - name: Determinar ano-alvo e rodada
+        id: ctx
         run: |
-          ARGS=""
-          if [ -n "${{ github.event.inputs.alvo }}" ]; then ARGS="$ARGS --alvo ${{ github.event.inputs.alvo }}"; fi
-          if [ -n "${{ github.event.inputs.molde }}" ]; then ARGS="$ARGS --molde ${{ github.event.inputs.molde }}"; fi
-          echo "Rodando: node scripts/gerar-ano.js $ARGS"
-          node scripts/gerar-ano.js $ARGS | tee saida.txt
-          # descobre o ano-alvo gerado (para nome da branch / título do PR)
-          ALVO=$(ls data/feriados/nacionais-*.json | sed -E 's/.*nacionais-([0-9]{4})\.json/\1/' | sort | tail -1)
-          echo "ano=$ALVO" >> "$GITHUB_OUTPUT"
+          ANO_CORRENTE=$(date -u +%Y)
+          MES_CORRENTE=$(date -u +%m)
+          # ano-alvo = corrente + 1 (a menos que informado manualmente)
+          if [ -n "${{ github.event.inputs.alvo }}" ]; then
+            ALVO="${{ github.event.inputs.alvo }}"
+          else
+            ALVO=$((ANO_CORRENTE + 1))
+          fi
+          if [ -n "${{ github.event.inputs.molde }}" ]; then
+            MOLDE="${{ github.event.inputs.molde }}"
+          else
+            MOLDE=$ANO_CORRENTE
+          fi
+          # rotula a rodada conforme o mês (10 = outubro / 11 = novembro / manual)
+          case "$MES_CORRENTE" in
+            10) RODADA="1ª rodada (outubro — rascunho antecipado)";;
+            11) RODADA="2ª rodada (novembro — reconferência)";;
+            *)  RODADA="execução manual";;
+          esac
+          echo "alvo=$ALVO" >> "$GITHUB_OUTPUT"
+          echo "molde=$MOLDE" >> "$GITHUB_OUTPUT"
+          echo "rodada=$RODADA" >> "$GITHUB_OUTPUT"
 
-      - name: Abrir Pull Request com o rascunho
+      - name: Gerar rascunho do ano-alvo
+        run: |
+          echo "Gerando ${{ steps.ctx.outputs.alvo }} a partir de ${{ steps.ctx.outputs.molde }} (${{ steps.ctx.outputs.rodada }})"
+          node scripts/gerar-ano.js --alvo "${{ steps.ctx.outputs.alvo }}" --molde "${{ steps.ctx.outputs.molde }}"
+
+      - name: Conferência via BrasilAPI (nacionais) — apoio, não bloqueia
+        continue-on-error: true
+        run: |
+          ALVO="${{ steps.ctx.outputs.alvo }}"
+          echo "Conferindo feriados nacionais de $ALVO na BrasilAPI..."
+          if curl -fsS "https://brasilapi.com.br/api/feriados/v1/$ALVO" -o brasilapi.json; then
+            echo "Resposta da BrasilAPI salva (anexada ao log para conferência humana):"
+            cat brasilapi.json
+          else
+            echo "BrasilAPI indisponível ou sem dados para $ALVO — seguindo apenas com o cálculo local."
+          fi
+
+      - name: Abrir/atualizar Pull Request com o rascunho
         uses: peter-evans/create-pull-request@v6
         with:
-          branch: "rascunho-feriados-${{ steps.gerar.outputs.ano }}"
+          branch: "rascunho-feriados-${{ steps.ctx.outputs.alvo }}"
           base: main
-          commit-message: "Rascunho automático de feriados ${{ steps.gerar.outputs.ano }}"
-          title: "🤖 Rascunho de feriados ${{ steps.gerar.outputs.ano }} (revisar previsões)"
+          commit-message: "Rascunho automático de feriados ${{ steps.ctx.outputs.alvo }}"
+          title: "🤖 Rascunho de feriados ${{ steps.ctx.outputs.alvo }} (revisar previsões)"
           labels: automacao, revisar
           body: |
-            Rascunho **gerado automaticamente** dos feriados de **${{ steps.gerar.outputs.ano }}**.
+            Rascunho **gerado automaticamente** dos feriados de **${{ steps.ctx.outputs.alvo }}** — ${{ steps.ctx.outputs.rodada }}.
 
             ## ✅ O que já está correto (não precisa mexer)
-            - **Feriados nacionais fixos** (01/01, 21/04, 01/05, 07/09, 12/10, 02/11, 15/11, 20/11, 25/12).
-            - **Feriados móveis** calculados por fórmula (Páscoa → Sexta-feira Santa, Carnaval, Corpus Christi, Quarta de Cinzas).
+            - **Feriados nacionais fixos** e **móveis** (Páscoa → Sexta-feira Santa, Carnaval, Corpus Christi, Quarta de Cinzas) calculados por fórmula.
             - **Feriados municipais/estaduais fixos** replicados do ano anterior.
 
             ## ⚠️ O que PRECISA de conferência humana
-            Todos os itens marcados com `"previsao": true` (e com sufixo "— previsão" no nome) são **estimativas** baseadas no padrão do ano anterior. Eles dependem de:
-            - **PMRP:** Decreto Municipal (costuma sair no fim de outubro).
+            Itens marcados com `"previsao": true` (sufixo "— previsão" no nome) são **estimativas** do padrão do ano anterior. Dependem de:
+            - **PMRP:** Decreto Municipal (sai ~fim de outubro).
             - **USP:** Portaria/Ofício GR/CIRC do DRH.
 
-            Confira cada `"previsao": true` com o documento oficial, ajuste as datas se necessário e **remova a flag `"previsao"` e o sufixo "— previsão"** dos que forem confirmados.
+            Confira cada `"previsao": true`, ajuste as datas e **remova a flag `"previsao"` e o sufixo** dos confirmados. O passo "Conferência via BrasilAPI" no log traz os nacionais oficiais para comparação.
 
-            > As datas de pontes derivadas de feriados móveis (ex.: sexta pós-Corpus) foram
-            > deslocadas automaticamente, mas **confirme sempre** — elas são as mais sujeitas a mudança.
+            ## 🔁 Sobre as duas rodadas
+            - **Outubro:** rascunho antecipado para você já começar a conferir.
+            - **Novembro:** reconferência — os cálculos (determinísticos) devem bater; suas correções já feitas **não são sobrescritas** (o gerador não altera arquivos existentes). Serve para lembrar o que ainda falta confirmar após os decretos saírem.
 
-            Depois de revisar, basta **aprovar e mesclar** este PR.
+            Depois de revisar e confirmar, **aprove e mescle** este PR. O ano só passa a ser exibido no site a partir de **1º de outubro** do ano anterior (regra do `js/dados.js`).

@@ -39,16 +39,24 @@ const App = (function () {
   function iniciar() {
     // Guarda: se a base de feriados não carregou (ex.: 404 do arquivo de dados),
     // avisa de forma clara em vez de estourar um TypeError no 1º clique.
-    if (!window.CALENDARIOS || !window.CALENDARIOS[2027]) {
+    if (!window.CALENDARIOS || !window.CALENDARIOS[window.ANO_ATIVO]) {
       const orgao = $("#tela-orgao");
       if (orgao) {
         const aviso = el("div", "info-box info-box-amarelo",
-          "⚠️ Não foi possível carregar a base de feriados de 2027. " +
+          "⚠️ Não foi possível carregar a base de feriados. " +
           "Recarregue a página; se persistir, verifique sua conexão.");
         orgao.insertBefore(aviso, orgao.firstChild);
       }
       return; // não registra os listeners que dependem dos dados
     }
+
+    // Preenche o ano exibido (dinâmico) nos textos da interface.
+    const ano = window.ANO_ATIVO;
+    const subt = $("#ano-subtitulo"); if (subt) subt.textContent = " · " + ano;
+    const plano = $("#ano-plano"); if (plano) plano.textContent = ano;
+    const rod = $("#ano-rodape"); if (rod) rod.textContent = " de " + ano;
+    const titulo = document.querySelector("title");
+    if (titulo) titulo.textContent = `Férias Inteligente — Servidores Públicos (${ano})`;
 
     $("#btn-pmrp").addEventListener("click", () => {
       estado.ente = "pmrp";
@@ -134,7 +142,7 @@ const App = (function () {
   function renderCidades() {
     const wrap = $("#grid-cidades");
     wrap.innerHTML = "";
-    const cidades = Object.keys(window.CALENDARIOS[2027].entes.usp.cidades).sort((a, b) =>
+    const cidades = Object.keys(window.CALENDARIOS[window.ANO_ATIVO].entes.usp.cidades).sort((a, b) =>
       a.localeCompare(b, "pt-BR")
     );
     cidades.forEach((c) => {
@@ -149,7 +157,7 @@ const App = (function () {
   }
 
   function renderInfoEnte() {
-    const ente = window.CALENDARIOS[2027].entes[estado.ente];
+    const ente = window.CALENDARIOS[window.ANO_ATIVO].entes[estado.ente];
     let txt = ente.nome;
     if (estado.ente === "usp" && estado.cidade) txt += " — " + estado.cidade;
     $("#info-ente").textContent = txt;
@@ -184,7 +192,7 @@ const App = (function () {
 
   /* ---------- Tela: preferência de mês ---------- */
   function renderPreferenciaMes() {
-    const ente = window.CALENDARIOS[2027].entes[estado.ente];
+    const ente = window.CALENDARIOS[window.ANO_ATIVO].entes[estado.ente];
     let txt = ente.nome;
     if (estado.ente === "usp" && estado.cidade) txt += " — " + estado.cidade;
     const etapaTxt = estado.etapa === 2 ? ` · 2º período (${estado.dias} dias restantes)` : ` · ${estado.dias} dias`;
@@ -251,7 +259,7 @@ const App = (function () {
 
   /* ---------- Tela resultados ---------- */
   function renderResultados() {
-    const ente = window.CALENDARIOS[2027].entes[estado.ente];
+    const ente = window.CALENDARIOS[window.ANO_ATIVO].entes[estado.ente];
     const etapaTxt = estado.etapa === 2
       ? ` &nbsp;·&nbsp; <em>2º período — ${estado.dias} dias restantes</em>`
       : "";
@@ -261,7 +269,7 @@ const App = (function () {
     $("#res-cabecalho").innerHTML =
       `<strong>${ente.nome}</strong>` +
       (estado.ente === "usp" && estado.cidade ? ` — ${estado.cidade}` : "") +
-      ` &nbsp;·&nbsp; ${estado.dias} dias de férias &nbsp;·&nbsp; ano 2027` + etapaTxt + mesesTxt;
+      ` &nbsp;·&nbsp; ${estado.dias} dias de férias &nbsp;·&nbsp; ano ${window.ANO_ATIVO}` + etapaTxt + mesesTxt;
 
     document.querySelectorAll(".aba[data-modo]").forEach((b) => {
       const ativo = b.getAttribute("data-modo") === estado.modo;
@@ -271,15 +279,15 @@ const App = (function () {
 
     $("#info-pagamento").innerHTML = `💰 <strong>Pagamento:</strong> ${ente.pagamento}`;
 
-    const cinzasISO = window.CALENDARIOS[2027].quartaDeCinzas;
+    const cinzasISO = window.CALENDARIOS[window.ANO_ATIVO].quartaDeCinzas;
     const cinzas = H.parse(cinzasISO);
     if (estado.ente === "usp") {
       $("#aviso-cinzas").innerHTML =
-        `🔸 <strong>Quarta-feira de Cinzas (${H.fmt(cinzas)}/2027):</strong> ` +
+        `🔸 <strong>Quarta-feira de Cinzas (${H.fmt(cinzas)}/${window.ANO_ATIVO}):</strong> ` +
         `na USP as atividades ficam suspensas — tratada como dia não trabalhado (feriado).`;
     } else {
       $("#aviso-cinzas").innerHTML =
-        `🔸 <strong>Quarta-feira de Cinzas (${H.fmt(cinzas)}/2027):</strong> ` +
+        `🔸 <strong>Quarta-feira de Cinzas (${H.fmt(cinzas)}/${window.ANO_ATIVO}):</strong> ` +
         `expediente de meio período — ótimo para encurtar o dia, mas não é feriado cheio.`;
     }
 
@@ -475,7 +483,7 @@ const App = (function () {
 
   /* ---------- Página final ---------- */
   function renderFinal() {
-    const ente = window.CALENDARIOS[2027].entes[estado.ente];
+    const ente = window.CALENDARIOS[window.ANO_ATIVO].entes[estado.ente];
     const totalDias = estado.plano.reduce((s, p) => s + p.dias, 0);
     const totalDescanso = estado.plano.reduce((s, p) => s + p.sugestao.totalDescanso, 0);
     const totalAbon = estado.plano.reduce((s, p) => s + (p.sugestao.abonadas || []).length, 0);
@@ -484,7 +492,7 @@ const App = (function () {
     $("#final-cabecalho").innerHTML =
       `<strong>${ente.nome}</strong>` +
       (estado.ente === "usp" && estado.cidade ? ` — ${estado.cidade}` : "") +
-      ` · ano 2027`;
+      ` · ano ${window.ANO_ATIVO}`;
 
     // resumo numérico
     const resumo = $("#final-resumo");

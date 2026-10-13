@@ -20,7 +20,11 @@
 (function () {
   "use strict";
 
-  const ANO = 2027; // ano atual suportado pelo app
+  // Mês (0-11) a partir do qual o app pode "virar" para o próximo ano.
+  // Regra do projeto: só exibir o ano seguinte a partir de 1º de OUTUBRO (mês 9),
+  // depois que os calendários/decretos do ano subsequente já foram publicados e
+  // conferidos. Antes disso, mantém o ano corrente.
+  const MES_VIRADA = 9; // outubro
 
   function carregarJSON(caminho) {
     return fetch(caminho, { cache: "no-cache" }).then((r) => {
@@ -29,8 +33,26 @@
     });
   }
 
-  /* Remonta window.CALENDARIOS[ANO] no mesmo formato do antigo feriados-ANO.js */
-  function montarCalendarios(entesDoc, nacionais, pmrp, usp) {
+  /* Decide qual ano o app deve exibir, dado:
+   *   - a lista de anos publicados (data/feriados/index.json)
+   *   - a data atual (hoje)
+   * Regra (Decisão A): mostra o MAIOR ano publicado que já esteja "liberado".
+   * Um ano Y só fica liberado a partir de 1º/out do ano Y-1. Ou seja:
+   *   - antes de 1º/out/(Y-1): o app NÃO exibe Y ainda (mesmo que o JSON exista);
+   *   - de 1º/out/(Y-1) em diante: Y passa a ser exibível.
+   * Entre os exibíveis, escolhe o maior. Fallback: o maior ano publicado. */
+  function escolherAno(anosPublicados, hoje) {
+    const anoHoje = hoje.getFullYear();
+    const mesHoje = hoje.getMonth();
+    // "ano-alvo liberado": o próximo ano fica liberado a partir de 1º/out
+    const anoLiberadoMax = mesHoje >= MES_VIRADA ? anoHoje + 1 : anoHoje;
+    const liberados = anosPublicados.filter((a) => a <= anoLiberadoMax);
+    const base = liberados.length ? liberados : anosPublicados;
+    return Math.max.apply(null, base);
+  }
+
+  /* Remonta window.CALENDARIOS[ano] no mesmo formato do antigo feriados-ANO.js */
+  function montarCalendarios(ano, entesDoc, nacionais, pmrp, usp) {
     const entes = entesDoc.entes;
 
     const calendario = {
@@ -65,7 +87,8 @@
     };
 
     window.CALENDARIOS = window.CALENDARIOS || {};
-    window.CALENDARIOS[ANO] = calendario;
+    window.CALENDARIOS[ano] = calendario;
+    window.ANO_ATIVO = ano; // o motor e a UI leem este ano dinâmico
   }
 
   function mostrarErro(msg) {
@@ -81,21 +104,31 @@
   }
 
   function iniciar() {
-    Promise.all([
-      carregarJSON("data/entes.json"),
-      carregarJSON(`data/feriados/nacionais-${ANO}.json`),
-      carregarJSON(`data/feriados/pmrp-${ANO}.json`),
-      carregarJSON(`data/feriados/usp-${ANO}.json`)
-    ])
-      .then(([entesDoc, nacionais, pmrp, usp]) => {
-        montarCalendarios(entesDoc, nacionais, pmrp, usp);
+    // 1) descobre quais anos existem; 2) escolhe o ano a exibir pela regra;
+    // 3) carrega os JSON desse ano e inicia o App.
+    carregarJSON("data/feriados/index.json")
+      .then((indice) => {
+        const anos = (indice && Array.isArray(indice.anos) && indice.anos.length)
+          ? indice.anos.slice()
+          : [new Date().getFullYear()];
+        const ano = escolherAno(anos, new Date());
+        return Promise.all([
+          Promise.resolve(ano),
+          carregarJSON("data/entes.json"),
+          carregarJSON(`data/feriados/nacionais-${ano}.json`),
+          carregarJSON(`data/feriados/pmrp-${ano}.json`),
+          carregarJSON(`data/feriados/usp-${ano}.json`)
+        ]);
+      })
+      .then(([ano, entesDoc, nacionais, pmrp, usp]) => {
+        montarCalendarios(ano, entesDoc, nacionais, pmrp, usp);
         if (window.App && typeof window.App.iniciar === "function") {
           window.App.iniciar();
         }
       })
       .catch((err) => {
         console.error("[dados] erro ao carregar a base de feriados:", err);
-        mostrarErro("Não foi possível carregar a base de feriados de " + ANO + ".");
+        mostrarErro("Não foi possível carregar a base de feriados.");
       });
   }
 

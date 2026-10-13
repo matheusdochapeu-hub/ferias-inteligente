@@ -249,4 +249,26 @@ const uspDoc = {
 };
 escreverJSON(`usp-${ANO_ALVO}.json`, uspDoc);
 
+/* ---- índice de anos ---- */
+// O app (js/dados.js) lê data/feriados/index.json para saber quais anos existem.
+// Acrescentamos o ano-alvo (ordenado, sem duplicar). Sempre atualizamos o índice,
+// mesmo que os JSON tenham sido pulados por já existirem, para garantir que o ano
+// esteja listado.
+(function atualizarIndice() {
+  const caminho = path.join(DIR_FERIADOS, "index.json");
+  let indice = { anos: [] };
+  try { indice = JSON.parse(fs.readFileSync(caminho, "utf8")); } catch (_) { /* cria do zero */ }
+  if (!Array.isArray(indice.anos)) indice.anos = [];
+  if (!indice.anos.includes(ANO_ALVO)) {
+    indice.anos.push(ANO_ALVO);
+    indice.anos.sort((a, b) => a - b);
+    indice._comentario = indice._comentario ||
+      "Lista os anos com dados de feriados publicados. O app escolhe qual exibir (ver js/dados.js). Atualizado por scripts/gerar-ano.js.";
+    fs.writeFileSync(caminho, JSON.stringify(indice, null, 2) + "\n", "utf8");
+    console.log(`✓ índice atualizado: index.json agora inclui ${ANO_ALVO}`);
+  } else {
+    console.log(`• índice já continha ${ANO_ALVO}`);
+  }
+})();
+
 console.log(`\nConcluído. Revise os arquivos de ${ANO_ALVO} (especialmente os marcados "previsao": true).`);

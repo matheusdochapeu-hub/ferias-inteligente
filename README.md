@@ -134,10 +134,28 @@ A base de dados é desacoplada por **ente/ano** em arquivos JSON. Para adicionar
 órgãos (federal, outros municípios), acrescente uma chave em `data/entes.json` e crie os
 arquivos de feriados correspondentes.
 
-### 🤖 Automação anual (GitHub Action)
-Todo **1º de novembro** (e sob demanda, pela aba **Actions → Run workflow**), o workflow
-`.github/workflows/gerar-proximo-ano.yml` executa `scripts/gerar-ano.js` e **abre um Pull
-Request** com o rascunho dos feriados do ano seguinte:
+### 📅 Qual ano o app exibe (seleção automática)
+O app **não** fica preso a um ano fixo. O `js/dados.js` lê `data/feriados/index.json` (lista
+dos anos publicados) e escolhe qual exibir pela regra:
+
+> Mostra o **maior ano publicado**, mas só **"vira" para o próximo ano a partir de 1º de
+> outubro** do ano anterior — depois que os calendários/decretos do ano seguinte já saíram.
+
+Exemplos: em qualquer data de jan–set/2027 o app mostra **2027**; a partir de **1º/out/2027**
+(se 2028 já estiver publicado) passa a mostrar **2028**. Antes disso, nunca antecipa.
+
+### 🤖 Automação anual (GitHub Action) — duas rodadas (out + nov)
+O workflow `.github/workflows/gerar-proximo-ano.yml` roda em **duas datas** (e sob demanda em
+**Actions → Run workflow**), executa `scripts/gerar-ano.js` e **abre/atualiza um Pull Request**
+com o rascunho dos feriados do **ano seguinte** (sempre `ano corrente + 1`, respeitando o
+calendário):
+
+- **1º de outubro** — 1ª geração (rascunho antecipado), para começar a conferir cedo.
+- **1º de novembro** — 2ª rodada (reconferência): os cálculos determinísticos devem bater,
+  **suas correções já feitas não são sobrescritas**, e o PR relembra o que ainda é "previsão".
+  Inclui um passo de **conferência via BrasilAPI** dos feriados nacionais (apoio, não bloqueia).
+
+O rascunho inclui:
 
 - **Nacionais fixos** replicados; **móveis** calculados por fórmula (`js/moveis.js`);
   **municipais/estaduais fixos** replicados do ano anterior.
