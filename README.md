@@ -11,11 +11,16 @@ e **emendar feriados** para:
 1. **Tela inicial:** escolha o órgão (PMRP ou USP) — sem precisar se identificar.
 2. **USP:** escolha a cidade da sua unidade (os feriados municipais mudam por cidade).
 3. **Dias de férias:** 10, 15, 20 ou 30 dias.
-4. **Resultados** em duas abas, listados da **melhor para a pior** opção:
-   - **Férias corridas:** melhores datas emendando feriados municipais, estaduais e federais.
-   - **Com abonadas + doação de sangue:** usa abonadas (máx. 6/ano, 1 por mês) e, quando a
-     abonada do mês já foi usada, a folga por doação de sangue (1 a cada 3 meses) para
-     maximizar os dias em casa.
+4. **Resultados** em **quatro modos** (botões), listados da **melhor para a pior** opção,
+   cada sugestão com um **minicalendário visual**:
+   - **📅 Férias corridas:** só emendas de feriados municipais, estaduais e federais (e pontes).
+   - **✨ Abonadas + doação:** usa abonadas (1 por mês) e doação de sangue para o máximo em casa.
+   - **🗓️ Só abonadas:** usa abonadas, sem doação de sangue.
+   - **🩸 Só doação de sangue:** usa apenas a folga de doação, sem abonadas.
+
+   > As abonadas são do saldo anual do servidor (6/ano, 1 por mês) e a doação de sangue é
+   > possível 1 vez a cada 3 meses. Cada sugestão é um cenário independente de quando tirar
+   > as férias; o app respeita "1 abonada por mês" e "1 doação por janela" dentro de cada opção.
 
 Informações exibidas (apenas informativas):
 - **Pagamento:** PMRP recebe no 1º dia útil; USP no 4º dia útil, com férias pagas adiantadas.
@@ -74,6 +79,33 @@ Regra aplicada: no máximo 1 doação por janela de férias sugerida.
 
 ### Opção C — abrir localmente
 Basta dar duplo clique em `index.html`. Funciona offline no seu computador.
+
+## 🔄 Como atualizar o app (passo a passo)
+
+Você NÃO precisa mexer no computador — tudo é feito pelo site do GitHub, no navegador.
+
+### Caminho simples (editar um arquivo pelo GitHub)
+1. Acesse o repositório: `https://github.com/matheusdochapeu-hub/ferias-inteligente`
+2. Clique no arquivo que quer mudar — para feriados, abra `data/feriados-2027.js`.
+3. Clique no ícone de **lápis** (✏️ "Edit this file"), no canto superior direito do arquivo.
+4. Faça a alteração (ex.: trocar uma data, mudar `tipo`, adicionar um feriado).
+5. Role até o fim e clique em **Commit changes** (botão verde).
+6. Se o GitHub Pages já estiver ligado, o site atualiza sozinho em ~1 minuto.
+
+### Exemplo prático: confirmar os pontos facultativos da PMRP 2027
+Quando o Decreto Municipal de Ribeirão Preto para 2027 for publicado:
+1. Abra `data/feriados-2027.js` no GitHub e clique no lápis.
+2. Localize o bloco `pmrp` → `facultativosLocais`.
+3. Ajuste/accrescente as datas conforme o decreto, por exemplo:
+   ```js
+   { data: "2027-10-28", nome: "Dia do Servidor Público", tipo: "facultativo" }
+   ```
+   e remova o sufixo "— previsão" dos que forem confirmados.
+4. **Commit changes**. Pronto.
+
+### Quando me chamar (Kiro)
+Se preferir, é só me mandar o decreto/portaria que eu faço a atualização e o push para você.
+Útil quando a mudança envolve lógica (não só dados).
 
 ## Expansão futura
 A base de dados é desacoplada por ente/ano. Para adicionar um novo ano, crie

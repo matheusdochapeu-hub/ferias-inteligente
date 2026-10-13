@@ -50,21 +50,33 @@
 
     <!-- TELA 4: RESULTADOS -->
     <section id="tela-resultados" class="tela">
+      <div class="nav-topo">
+        <button class="btn-voltar" data-voltar="tela-dias">← Mudar nº de dias</button>
+        <button class="btn-voltar" data-voltar="tela-orgao">↺ Recomeçar</button>
+      </div>
+
       <div id="res-cabecalho" class="res-cabecalho"></div>
 
-      <div class="abas">
-        <button id="aba-corridas" class="aba ativa">📅 Férias corridas (emendas simples)</button>
-        <button id="aba-abonadas" class="aba">✨ Com abonadas + doação de sangue (máximo em casa)</button>
+      <div class="abas" role="tablist" aria-label="Modo de cálculo das férias">
+        <button class="aba ativa" role="tab" aria-selected="true" data-modo="corridas">
+          📅 Férias corridas<br><small>só emendas de feriados</small>
+        </button>
+        <button class="aba" role="tab" aria-selected="false" data-modo="abonadas">
+          ✨ Abonadas + doação<br><small>máximo em casa</small>
+        </button>
+        <button class="aba" role="tab" aria-selected="false" data-modo="abonadas_sem_doacao">
+          🗓️ Só abonadas<br><small>sem doação de sangue</small>
+        </button>
+        <button class="aba" role="tab" aria-selected="false" data-modo="doacao">
+          🩸 Só doação de sangue<br><small>sem abonadas</small>
+        </button>
       </div>
 
       <div id="info-pagamento" class="info-box"></div>
       <div id="aviso-cinzas" class="info-box info-box-amarelo"></div>
 
       <p class="ajuda">Lista ordenada da <strong>melhor</strong> para a pior opção do ano:</p>
-      <div id="lista-resultados" class="lista-resultados"></div>
-
-      <button class="btn-voltar" data-voltar="tela-dias">← Mudar nº de dias</button>
-      <button class="btn-voltar" data-voltar="tela-orgao">← Recomeçar</button>
+      <div id="lista-resultados" class="lista-resultados" role="region" aria-live="polite" aria-label="Sugestões de férias"></div>
     </section>
   </main>
 

@@ -106,6 +106,25 @@ h2 {
 .btn-voltar:hover { background: #e3f2fd; }
 
 /* ---------- Resultados ---------- */
+.nav-topo {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: linear-gradient(160deg, #e3f2fd 0%, #eef3f8 100%);
+  padding: 8px 0;
+}
+.nav-topo .btn-voltar {
+  margin: 0;
+  background: #fff;
+  border: 1px solid #cfd8dc;
+  font-weight: 600;
+}
+.nav-topo .btn-voltar:hover { background: #e3f2fd; border-color: var(--azul); }
+
 .res-cabecalho {
   text-align: center;
   background: var(--azul-escuro);
@@ -118,7 +137,7 @@ h2 {
 
 .abas {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
   margin-bottom: 14px;
 }
@@ -126,12 +145,14 @@ h2 {
   background: #fff;
   border: 2px solid #e0e0e0;
   border-radius: 10px;
-  padding: 12px;
+  padding: 12px 10px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--cinza-texto);
   font-size: 0.92rem;
+  line-height: 1.25;
 }
+.aba small { font-weight: 400; font-size: 0.76rem; opacity: 0.85; }
 .aba.ativa {
   background: var(--azul);
   color: #fff;
@@ -187,6 +208,89 @@ h2 {
 .muted { color: var(--cinza-texto); font-weight: 400; font-size: 0.88rem; }
 
 .vazio { text-align: center; color: var(--cinza-texto); }
+
+/* ---------- Minicalendário ---------- */
+.mini-cal-wrap {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed #d7dee6;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.mini-mes { flex: 0 0 auto; }
+.mini-mes-titulo {
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--azul-escuro);
+  margin-bottom: 6px;
+  text-transform: capitalize;
+}
+.mini-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 26px);
+  gap: 3px;
+}
+.mini-head { margin-bottom: 3px; }
+.mini-dow {
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--cinza-texto);
+  font-weight: 700;
+}
+.mini-dia {
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  border-radius: 6px;
+  background: #f4f6f9;
+  color: #37474f;
+  cursor: default;
+}
+.mini-dia.vazio { background: transparent; }
+.mini-dia.fora { background: #fff; color: #c3ccd4; }
+.mini-dia.fds-fora { background: #fafbfc; color: #d2dae1; }
+
+/* dentro do bloco */
+.mini-dia.fds       { background: #e8edf2; color: #78909c; }
+.mini-dia.util-dentro { background: #eceff1; color: #546e7a; }
+.mini-dia.ponte     { background: #b3e5fc; color: #01579b; font-weight: 700; }
+.mini-dia.feriado   { background: #c8e6c9; color: #1b5e20; font-weight: 700; }
+.mini-dia.meio      { background: #d7ccc8; color: #4e342e; font-weight: 700; }
+.mini-dia.doacao    { background: #ffcdd2; color: #b71c1c; font-weight: 700; }
+.mini-dia.abonada   { background: #e1bee7; color: #4a148c; font-weight: 700; }
+.mini-dia.ferias    { background: #ffd54f; color: #5d4037; font-weight: 700; }
+
+/* legenda */
+.mini-legenda {
+  flex-basis: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  font-size: 0.72rem;
+  color: var(--cinza-texto);
+  margin-top: 4px;
+}
+.mini-legenda .lg {
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+.lg-ferias  { background: #ffd54f; }
+.lg-feriado { background: #c8e6c9; }
+.lg-abonada { background: #e1bee7; }
+.lg-doacao  { background: #ffcdd2; }
+.lg-ponte   { background: #b3e5fc; }
+.lg-meio    { background: #d7ccc8; }
+.lg-fds     { background: #e8edf2; }
 
 /* ---------- Rodapé ---------- */
 .rodape {

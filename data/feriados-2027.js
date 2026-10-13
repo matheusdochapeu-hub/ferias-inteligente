@@ -22,6 +22,9 @@ window.CALENDARIOS = window.CALENDARIOS || {};
 window.CALENDARIOS[2027] = {
   ano: 2027,
 
+  /* Datas de referência usadas em avisos da interface. */
+  quartaDeCinzas: "2027-02-10",
+
   /* Feriados NACIONAIS de 2027 (válidos para todos os entes). */
   nacionais: [
     { data: "2027-01-01", nome: "Confraternização Universal", tipo: "feriado" },
@@ -75,9 +78,7 @@ window.CALENDARIOS[2027] = {
         // Baseados no padrão recorrente da PMRP (decretos de 2025 e 2026).
         // ⚠️ PREVISÃO — substituir pelos dados oficiais quando o Decreto
         //    Municipal de 2027 for publicado (previsto p/ fim de out/2026).
-        { data: "2027-02-08", nome: "Carnaval (ponto facultativo) — previsão", tipo: "facultativo" },
-        { data: "2027-02-09", nome: "Carnaval (ponto facultativo) — previsão", tipo: "facultativo" },
-        { data: "2027-02-10", nome: "Quarta-feira de Cinzas (meio período) — previsão", tipo: "meio" },
+        // (Carnaval 08-09/02 e Quarta de Cinzas 10/02 já vêm de "nacionaisFacultativos".)
         { data: "2027-05-28", nome: "Sexta pós-Corpus Christi (ponto facultativo) — previsão", tipo: "facultativo" },
         { data: "2027-10-28", nome: "Dia do Servidor Público (ponto facultativo) — previsão", tipo: "facultativo" },
         { data: "2027-12-24", nome: "Véspera de Natal (ponto facultativo) — previsão", tipo: "facultativo" },
