@@ -1,0 +1,117 @@
+{
+  "ente": "usp",
+  "ano": 2027,
+  "_observacao": "Fonte: Ofícios GR/CIRC de 2027. Facultativos/pontes sujeitos a confirmação por portaria.",
+  "estaduais": [
+    { "data": "2027-02-10", "nome": "Quarta-feira de Cinzas (atividades suspensas)", "tipo": "feriado" },
+    { "data": "2027-05-27", "nome": "Corpus Christi", "tipo": "feriado" },
+    { "data": "2027-07-09", "nome": "Revolução Constitucionalista (estadual SP)", "tipo": "feriado" }
+  ],
+  "facultativosGerais": [
+    { "data": "2027-10-28", "nome": "Dia do Servidor Público (ponto facultativo)", "tipo": "facultativo" }
+  ],
+  "cidades": {
+    "Anhembi": [
+      { "data": "2027-04-15", "nome": "Feriado municipal (Anhembi)", "tipo": "feriado" },
+      { "data": "2027-09-08", "nome": "Feriado municipal (Anhembi)", "tipo": "feriado" },
+      { "data": "2027-11-27", "nome": "Feriado municipal (Anhembi)", "tipo": "feriado" },
+      { "data": "2027-04-16", "nome": "Ponte (Anhembi)", "tipo": "facultativo" }
+    ],
+    "Araraquara": [
+      { "data": "2027-07-11", "nome": "Feriado municipal (Araraquara)", "tipo": "feriado" },
+      { "data": "2027-08-22", "nome": "Feriado municipal (Araraquara)", "tipo": "feriado" }
+    ],
+    "Bauru": [
+      { "data": "2027-08-01", "nome": "Feriado municipal (Bauru)", "tipo": "feriado" }
+    ],
+    "Cananéia": [
+      { "data": "2027-06-24", "nome": "Feriado municipal (Cananéia)", "tipo": "feriado" },
+      { "data": "2027-08-13", "nome": "Feriado municipal (Cananéia)", "tipo": "feriado" },
+      { "data": "2027-08-15", "nome": "Feriado municipal (Cananéia)", "tipo": "feriado" },
+      { "data": "2027-06-25", "nome": "Ponte (Cananéia)", "tipo": "facultativo" }
+    ],
+    "Cássia dos Coqueiros": [
+      { "data": "2027-01-06", "nome": "Feriado municipal (Cássia dos Coqueiros)", "tipo": "feriado" },
+      { "data": "2027-02-18", "nome": "Feriado municipal (Cássia dos Coqueiros)", "tipo": "feriado" },
+      { "data": "2027-05-22", "nome": "Feriado municipal (Cássia dos Coqueiros)", "tipo": "feriado" },
+      { "data": "2027-06-28", "nome": "Feriado municipal (Cássia dos Coqueiros)", "tipo": "feriado" },
+      { "data": "2027-02-19", "nome": "Ponte (Cássia dos Coqueiros)", "tipo": "facultativo" }
+    ],
+    "Cubatão": [
+      { "data": "2027-04-09", "nome": "Feriado municipal (Cubatão)", "tipo": "feriado" },
+      { "data": "2027-08-15", "nome": "Feriado municipal (Cubatão)", "tipo": "feriado" }
+    ],
+    "Itatinga": [
+      { "data": "2027-06-24", "nome": "Feriado municipal (Itatinga)", "tipo": "feriado" },
+      { "data": "2027-07-24", "nome": "Feriado municipal (Itatinga)", "tipo": "feriado" },
+      { "data": "2027-06-25", "nome": "Ponte (Itatinga)", "tipo": "facultativo" }
+    ],
+    "Itu": [
+      { "data": "2027-02-02", "nome": "Feriado municipal (Itu)", "tipo": "feriado" },
+      { "data": "2027-02-01", "nome": "Ponte (Itu)", "tipo": "facultativo" }
+    ],
+    "Jaú": [
+      { "data": "2027-08-15", "nome": "Feriado municipal (Jaú)", "tipo": "feriado" }
+    ],
+    "Lorena": [
+      { "data": "2027-08-15", "nome": "Feriado municipal (Lorena)", "tipo": "feriado" },
+      { "data": "2027-11-14", "nome": "Feriado municipal (Lorena)", "tipo": "feriado" }
+    ],
+    "Pariquera-Açu": [
+      { "data": "2027-06-29", "nome": "Feriado municipal (Pariquera-Açu)", "tipo": "feriado" },
+      { "data": "2027-10-11", "nome": "Feriado municipal (Pariquera-Açu)", "tipo": "feriado" },
+      { "data": "2027-06-28", "nome": "Ponte (Pariquera-Açu)", "tipo": "facultativo" }
+    ],
+    "Piracicaba": [
+      { "data": "2027-06-13", "nome": "Feriado municipal (Piracicaba)", "tipo": "feriado" },
+      { "data": "2027-12-08", "nome": "Feriado municipal (Piracicaba)", "tipo": "feriado" }
+    ],
+    "Piraju": [
+      { "data": "2027-01-20", "nome": "Feriado municipal (Piraju)", "tipo": "feriado" }
+    ],
+    "Pirassununga": [
+      { "data": "2027-08-06", "nome": "Feriado municipal (Pirassununga)", "tipo": "feriado" },
+      { "data": "2027-12-08", "nome": "Feriado municipal (Pirassununga)", "tipo": "feriado" }
+    ],
+    "Ribeirão Preto": [
+      { "data": "2027-01-20", "nome": "Dia de São Sebastião (Ribeirão Preto)", "tipo": "feriado" },
+      { "data": "2027-06-19", "nome": "Aniversário de Ribeirão Preto", "tipo": "feriado" }
+    ],
+    "Salesópolis": [
+      { "data": "2027-02-28", "nome": "Feriado municipal (Salesópolis)", "tipo": "feriado" },
+      { "data": "2027-03-19", "nome": "Feriado municipal (Salesópolis)", "tipo": "feriado" }
+    ],
+    "Santos": [
+      { "data": "2027-01-26", "nome": "Feriado municipal (Santos)", "tipo": "feriado" },
+      { "data": "2027-09-08", "nome": "Feriado municipal (Santos)", "tipo": "feriado" },
+      { "data": "2027-01-25", "nome": "Ponte (Santos)", "tipo": "facultativo" }
+    ],
+    "São Carlos": [
+      { "data": "2027-08-15", "nome": "Feriado municipal (São Carlos)", "tipo": "feriado" },
+      { "data": "2027-11-04", "nome": "Feriado municipal (São Carlos)", "tipo": "feriado" },
+      { "data": "2027-11-03", "nome": "Ponte (São Carlos)", "tipo": "facultativo" }
+    ],
+    "São Paulo": [
+      { "data": "2027-01-25", "nome": "Aniversário de São Paulo", "tipo": "feriado" }
+    ],
+    "São Sebastião": [
+      { "data": "2027-03-16", "nome": "Feriado municipal (São Sebastião)", "tipo": "feriado" },
+      { "data": "2027-03-15", "nome": "Ponte (São Sebastião)", "tipo": "facultativo" }
+    ],
+    "Ubatuba": [
+      { "data": "2027-09-13", "nome": "Feriado municipal (Ubatuba)", "tipo": "feriado" },
+      { "data": "2027-10-28", "nome": "Feriado municipal (Ubatuba)", "tipo": "feriado" }
+    ],
+    "Valinhos": [
+      { "data": "2027-01-20", "nome": "Feriado municipal (Valinhos)", "tipo": "feriado" },
+      { "data": "2027-05-28", "nome": "Feriado municipal (Valinhos)", "tipo": "feriado" }
+    ],
+    "Monte Negro/RO": [
+      { "data": "2027-01-04", "nome": "Feriado municipal (Monte Negro/RO)", "tipo": "feriado" },
+      { "data": "2027-02-14", "nome": "Feriado municipal (Monte Negro/RO)", "tipo": "feriado" },
+      { "data": "2027-03-19", "nome": "Feriado municipal (Monte Negro/RO)", "tipo": "feriado" },
+      { "data": "2027-06-18", "nome": "Feriado municipal (Monte Negro/RO)", "tipo": "feriado" },
+      { "data": "2027-05-27", "nome": "Corpus Christi (Monte Negro/RO)", "tipo": "feriado" }
+    ]
+  }
+}
