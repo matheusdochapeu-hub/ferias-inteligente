@@ -43,7 +43,11 @@ window.CALENDARIOS[2027] = {
   nacionaisFacultativos: [
     { data: "2027-02-08", nome: "Carnaval (ponto facultativo)", tipo: "facultativo" },
     { data: "2027-02-09", nome: "Carnaval (ponto facultativo)", tipo: "facultativo" },
-    { data: "2027-02-10", nome: "Quarta-feira de Cinzas (meio período)", tipo: "meio" }
+    { data: "2027-02-10", nome: "Quarta-feira de Cinzas (meio período)", tipo: "meio" },
+    // Pontes de novembro/2027: 01/11 (seg) entre o FDS e Finados (02/11, ter);
+    // 05/11 (sex) emendando o FDS. Considerados pontos facultativos.
+    { data: "2027-11-01", nome: "Ponte de Finados (ponto facultativo)", tipo: "facultativo" },
+    { data: "2027-11-05", nome: "Ponte (ponto facultativo)", tipo: "facultativo" }
   ],
 
   entes: {
