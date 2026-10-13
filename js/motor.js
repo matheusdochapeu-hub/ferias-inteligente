@@ -299,6 +299,51 @@ const Motor = (function () {
     tentar(1);
     tentar(-1);
 
+    // ---- Captura de FERIADO/FACULTATIVO "ilha" próximo ----
+    // Além das pontes coladas, olha mais longe (até alguns dias úteis) buscando
+    // um FERIADO ou PONTO FACULTATIVO separado do bloco por dias úteis. Se der
+    // para "pagar" esses dias úteis com os recursos disponíveis (abonada: 1/mês;
+    // doação: 1/janela) E o ganho de dias livres capturados (o feriado + fins de
+    // semana ao redor) compensar o custo, estende o bloco até lá.
+    capturarIlha(1);
+    capturarIlha(-1);
+
+    function capturarIlha(direcao) {
+      const MAX_ALCANCE = 4; // até 4 dias úteis entre o bloco e a ilha
+      let cursor = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
+      const uteis = [];
+      // acumula dias úteis consecutivos; para ao encontrar o 1º dia livre (a ilha)
+      for (let i = 0; i < MAX_ALCANCE; i++) {
+        const c = classificar(cursor, mapa);
+        if (c.estado === "util") { uteis.push(new Date(cursor)); cursor = addDias(cursor, direcao); }
+        else break;
+      }
+      if (!uteis.length) return;
+      const cIlha = classificar(cursor, mapa);
+      // a ilha precisa começar com FERIADO ou FACULTATIVO em dia de semana
+      // (um simples fim de semana já teria sido pego por expandirLivres/tentar)
+      if (!(cIlha.estado === "folga" || cIlha.estado === "facultativo") || ehFimDeSemana(cursor)) return;
+
+      // mede o ganho de dias LIVRES contíguos a partir da ilha (feriado + FDS/pontes)
+      let ganho = 0;
+      let p = new Date(cursor);
+      while (ehLivre(p, mapa)) { ganho++; p = addDias(p, direcao); }
+      // custo = dias úteis a comprar; só vale se ganho de folga > custo de recursos
+      if (ganho <= uteis.length) return;
+
+      // tenta reservar recursos para TODOS os dias úteis intermediários
+      const reservasFeitas = [];
+      let ok = true;
+      for (const dia of uteis) {
+        const tipo = reservar(dia);
+        if (!tipo) { ok = false; break; }
+        reservasFeitas.push({ dia, tipo });
+      }
+      if (!ok) { desfazer(reservasFeitas); return; } // não deu p/ pagar a ponte: aborta
+      // sucesso: incorpora os dias comprados + a ilha livre
+      recomputarBloco(res, mapa);
+    }
+
     // ---- Doação de sangue "avulsa" ----
     // Se o modo usa doação mas ela não foi aproveitada como ponte, anexa-a a uma
     // ponta do bloco para render pelo menos +1 dia de folga. Assim o modo
