@@ -365,26 +365,28 @@ const Motor = (function () {
     // abonada só é colada na ponta como dia avulso quando NÃO foi necessária
     // para uma emenda naquele mês.
     function colarAbonadasNaPonta(direcao) {
-      // tenta no máximo alguns dias úteis seguidos; cada compra pode destravar
-      // um fim de semana/feriado adiante.
-      const MAX = 3;
+      // Uma abonada só vale a pena na ponta se "puxar" um descanso — isto é, se a
+      // partir do 1º dia útil da ponta chegarmos a um dia LIVRE comprando no
+      // máximo 1 dia útil (a própria abonada). Se o dia útil da ponta já encosta
+      // num dia livre (fim de semana/feriado), a abonada rende +1 e puxa esse
+      // bloco. Se o vizinho for outro dia útil, a abonada seria um dia AVULSO que
+      // só reduz a razão descanso/gasto — então NÃO colamos (evita gerar uma
+      // sugestão pior gastando recurso).
+      const MAX = 2; // nº de pontas que uma mesma direção pode destravar em sequência
       for (let i = 0; i < MAX; i++) {
         const alvo = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
         const c = classificar(alvo, mapa);
         if (c.estado !== "util") break; // ponta já livre: recomputarBloco já cobriu
+        // ganho real exige que o vizinho na mesma direção seja livre
+        const vizinho = addDias(alvo, direcao);
+        if (!ehLivre(vizinho, mapa)) break; // seria dia avulso -> não vale a pena
         const mesKey = iso(alvo).slice(0, 7);
         // só com abonada disponível para aquele mês (1/mês neste período e mês
         // não usado em outro período do plano) e dentro do teto anual.
         if (!(abonadasNoMes(mesKey) < 1 && !mesesJaUsados.has(mesKey) && res.abonadas.length < 6)) break;
-        // o dia seguinte (na mesma direção) é livre? então esta abonada "puxa"
-        // um descanso (emenda real); senão, é só um dia avulso de folga.
-        const vizinho = addDias(alvo, direcao);
-        const motivo = ehLivre(vizinho, mapa)
-          ? "Abonada (emenda na ponta das férias)"
-          : "Abonada (dia extra na ponta das férias)";
-        // reserva a abonada e incorpora o dia; recomputar pode puxar o FDS colado.
+        // reserva a abonada e incorpora o dia; recomputar puxa o descanso colado.
         abonadasPorMes[mesKey] = abonadasNoMes(mesKey) + 1;
-        res.abonadas.push({ dt: new Date(alvo), motivo });
+        res.abonadas.push({ dt: new Date(alvo), motivo: "Abonada (emenda na ponta das férias)" });
         if (direcao === 1) res.blocoFim = new Date(alvo);
         else res.blocoInicio = new Date(alvo);
         recomputarBloco(res, mapa);
