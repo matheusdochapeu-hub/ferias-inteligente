@@ -455,3 +455,40 @@ h2 {
     print-color-adjust: exact;
   }
 }
+
+/* ---------- Painel do contador de acessos (somente dev) ---------- */
+#dev-contador {
+  display: none; /* oculto por padrão; o JS mostra só no modo dev */
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 9999;
+  align-items: center;
+  gap: 10px;
+  background: rgba(13, 71, 161, 0.95);
+  color: #fff;
+  padding: 10px 14px;
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  font-size: 0.9rem;
+  backdrop-filter: blur(2px);
+}
+.dev-contador-rotulo { opacity: 0.85; font-size: 0.78rem; }
+.dev-contador-num { font-size: 1.15rem; font-weight: 800; letter-spacing: 0.3px; }
+.dev-contador-fechar {
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  color: #fff;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 0.8rem;
+  line-height: 1;
+  padding: 0;
+}
+.dev-contador-fechar:hover { background: rgba(255, 255, 255, 0.35); }
+
+@media print {
+  #dev-contador { display: none !important; }
+}

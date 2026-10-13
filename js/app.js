@@ -37,6 +37,19 @@ const App = (function () {
 
   /* ---------- Inicialização / listeners ---------- */
   function iniciar() {
+    // Guarda: se a base de feriados não carregou (ex.: 404 do arquivo de dados),
+    // avisa de forma clara em vez de estourar um TypeError no 1º clique.
+    if (!window.CALENDARIOS || !window.CALENDARIOS[2027]) {
+      const orgao = $("#tela-orgao");
+      if (orgao) {
+        const aviso = el("div", "info-box info-box-amarelo",
+          "⚠️ Não foi possível carregar a base de feriados de 2027. " +
+          "Recarregue a página; se persistir, verifique sua conexão.");
+        orgao.insertBefore(aviso, orgao.firstChild);
+      }
+      return; // não registra os listeners que dependem dos dados
+    }
+
     $("#btn-pmrp").addEventListener("click", () => {
       estado.ente = "pmrp";
       estado.cidade = "Ribeirão Preto";
@@ -52,8 +65,18 @@ const App = (function () {
 
     document.querySelectorAll("[data-voltar]").forEach((b) =>
       b.addEventListener("click", () => {
-        const alvo = b.getAttribute("data-voltar");
+        let alvo = b.getAttribute("data-voltar");
         if (alvo === "tela-orgao") resetar();
+        // Na 2ª etapa (2º período), "mudar nº de dias" não pode cair direto em
+        // tela-dias: lá o fluxo recomeçaria errado (sem reoferecer o 2º período
+        // e pulando a preferência de mês). Volta à decisão, que reconstrói as
+        // opções de dias restantes a partir do 1º período já escolhido.
+        if (alvo === "tela-dias" && estado.etapa === 2) {
+          const ehUsp = estado.ente === "usp";
+          const opcoes = opcoesRestantes(estado.plano[0].dias, ehUsp);
+          renderDecisao(opcoes);
+          alvo = "tela-decisao";
+        }
         mostrarTela(alvo);
       })
     );
@@ -85,15 +108,15 @@ const App = (function () {
     if (pdf) pdf.addEventListener("click", () => window.print());
 
     // preferência de mês
-    $("#mes-nao").addEventListener("click", () => avançarComMeses([]));          // sem preferência
-    $("#mes-todos").addEventListener("click", () => avançarComMeses([]));        // todos os meses
+    $("#mes-nao").addEventListener("click", () => avancarComMeses([]));          // sem preferência
+    $("#mes-todos").addEventListener("click", () => avancarComMeses([]));        // todos os meses
     $("#mes-sim").addEventListener("click", () => {                              // tem preferência
       $("#mes-selecao").style.display = "";
       $("#mes-selecao").scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
     $("#mes-aplicar").addEventListener("click", () => {
       const sel = [...document.querySelectorAll(".btn-mes.sel")].map((b) => Number(b.getAttribute("data-mes")));
-      avançarComMeses(sel); // se nada selecionado, [] = todos
+      avancarComMeses(sel); // se nada selecionado, [] = todos
     });
   }
 
@@ -204,7 +227,7 @@ const App = (function () {
     $("#mes-selecao").style.display = "none";
   }
 
-  function avançarComMeses(meses) {
+  function avancarComMeses(meses) {
     estado.mesesPreferidos = meses;
     renderResultados();
     mostrarTela("tela-resultados");

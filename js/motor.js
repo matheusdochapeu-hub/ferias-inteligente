@@ -385,14 +385,18 @@ const Motor = (function () {
   }
 
   /* Pontuação: maximizar descanso por dia GASTO do saldo (férias+abonada+doação),
-   * com bônus por emendas reais (feriados/facultativos em dia útil, nunca FDS). */
+   * com bônus por emendas reais (feriados/facultativos em dia útil, nunca FDS).
+   *
+   * Nota: NÃO premiamos a simples quantidade de abonadas/doações usadas — isso
+   * contrariaria o objetivo de "mais descanso por dia gasto" (duas opções com o
+   * mesmo descanso, a que gasta MENOS recursos deve vencer). O mérito de gastar
+   * um recurso já está refletido no ganho de `totalDescanso` e na `razao`. */
   function pontuar(res, mapa) {
     const diasGastos = res.diasFerias + res.abonadas.length + res.doacoes.length;
     const razao = res.totalDescanso / diasGastos;
     const bonusEmenda = res.detalhesEmenda.length * 1.0; // só feriados/facult. em dia útil
     const penalidade = res.feriadosDesperdicados * 1.5;  // feriado dentro das férias = jogado fora
-    return razao * 10 + res.totalDescanso + bonusEmenda - penalidade
-      + res.abonadas.length * 0.8 + res.doacoes.length * 0.4;
+    return razao * 10 + res.totalDescanso + bonusEmenda - penalidade;
   }
 
   /* Gera e ordena todas as sugestões do ano para o modo escolhido.
@@ -427,13 +431,22 @@ const Motor = (function () {
 
     candidatos.sort((a, b) => b.pontuacao - a.pontuacao);
 
-    const vistos = new Set();
+    // Deduplica por bloco de folga (mesmo blocoInicio_blocoFim = mesmo descanso).
+    // Entre sugestões de bloco idêntico, preferimos a de MENOR custo de recursos
+    // (abonadas + doações); havendo empate, a de maior pontuação (que já é a 1ª
+    // encontrada, pois a lista vem ordenada por pontuação desc).
+    const custoRecursos = (s) => s.abonadas.length + s.doacoes.length;
+    const posPorBloco = new Map(); // chaveBloco -> índice em `unicos`
     const unicos = [];
     for (const sug of candidatos) {
       const chaveBloco = iso(sug.blocoInicio) + "_" + iso(sug.blocoFim);
-      if (vistos.has(chaveBloco)) continue;
-      vistos.add(chaveBloco);
-      unicos.push(sug);
+      if (!posPorBloco.has(chaveBloco)) {
+        posPorBloco.set(chaveBloco, unicos.length);
+        unicos.push(sug);
+      } else {
+        const i = posPorBloco.get(chaveBloco);
+        if (custoRecursos(sug) < custoRecursos(unicos[i])) unicos[i] = sug;
+      }
     }
     return unicos;
   }
