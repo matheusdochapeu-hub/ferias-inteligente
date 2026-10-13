@@ -190,6 +190,12 @@ h2 {
   margin-bottom: 10px;
 }
 .posicao { font-size: 1.3rem; font-weight: 700; }
+.selos {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
 .descanso {
   background: var(--verde);
   color: #fff;
@@ -197,6 +203,15 @@ h2 {
   border-radius: 20px;
   font-weight: 700;
   font-size: 0.9rem;
+}
+.ganhos {
+  background: #fff8e1;
+  color: #e65100;
+  border: 1px solid #ffcc80;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-weight: 700;
+  font-size: 0.78rem;
 }
 
 .card div { margin: 5px 0; font-size: 0.95rem; }

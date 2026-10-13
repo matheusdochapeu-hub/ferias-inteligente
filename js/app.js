@@ -145,10 +145,14 @@ const App = (function () {
     const card = el("div", "card" + (i === 0 ? " card-top" : ""));
 
     const medalha = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
+    const ganhos = r.totalDescanso - r.diasFerias; // folga a mais além dos dias de férias
     const cab = el("div", "card-cab");
     cab.innerHTML =
       `<span class="posicao">${medalha}</span>` +
-      `<span class="descanso">${r.totalDescanso} dias de descanso</span>`;
+      `<span class="selos">` +
+      `<span class="descanso">${r.totalDescanso} dias de descanso</span>` +
+      `<span class="ganhos">+${ganhos} ${ganhos === 1 ? "dia ganho" : "dias ganhos"}</span>` +
+      `</span>`;
     card.appendChild(cab);
 
     // linha principal: período de férias
