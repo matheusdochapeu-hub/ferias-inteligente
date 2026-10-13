@@ -298,6 +298,32 @@ const Motor = (function () {
 
     tentar(1);
     tentar(-1);
+
+    // ---- Doação de sangue "avulsa" ----
+    // Se o modo usa doação mas ela não foi aproveitada como ponte, anexa-a a uma
+    // ponta do bloco para render pelo menos +1 dia de folga. Assim o modo
+    // "abonadas + doação" sempre entrega ao menos 1 dia a mais que "só abonadas".
+    if (cfg.usarDoacao && res.doacoes.length === 0) {
+      const depois = addDias(res.blocoFim, 1);
+      const antes = addDias(res.blocoInicio, -1);
+      const podeDepois = classificar(depois, mapa).estado === "util" && doacaoPermitida(depois);
+      const podeAntes = classificar(antes, mapa).estado === "util" && doacaoPermitida(antes);
+
+      // Preferimos a ponta que já encosta num fim de semana logo em seguida
+      // (maior chance de "puxar" folga extra ao reexpandir); senão, qualquer uma.
+      let escolhido = null;
+      if (podeDepois && ehLivre(addDias(depois, 1), mapa)) escolhido = { dia: depois, dir: 1 };
+      else if (podeAntes && ehLivre(addDias(antes, -1), mapa)) escolhido = { dia: antes, dir: -1 };
+      else if (podeDepois) escolhido = { dia: depois, dir: 1 };
+      else if (podeAntes) escolhido = { dia: antes, dir: -1 };
+
+      if (escolhido) {
+        res.doacoes.push({ dt: new Date(escolhido.dia), motivo: "Doação de sangue (dia extra na ponta)" });
+        if (escolhido.dir === 1) res.blocoFim = new Date(escolhido.dia);
+        else res.blocoInicio = new Date(escolhido.dia);
+        recomputarBloco(res, mapa); // pode puxar um fim de semana colado
+      }
+    }
   }
 
   /* Recalcula blocoInicio/blocoFim cobrindo dias livres E dias comprados
