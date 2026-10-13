@@ -635,4 +635,7 @@ const App = (function () {
   return { iniciar };
 })();
 
-document.addEventListener("DOMContentLoaded", App.iniciar);
+// A inicialização é disparada por js/dados.js, DEPOIS que os JSON de feriados
+// são carregados (fetch) e window.CALENDARIOS[ano] é montado. Expomos App no
+// escopo global para o carregador poder chamá-lo.
+window.App = App;

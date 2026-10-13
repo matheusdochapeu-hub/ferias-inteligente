@@ -29,19 +29,29 @@ Informações exibidas (apenas informativas):
 ## Estrutura do projeto
 
 ```
-index.html              → página única com as 4 telas
-css/estilo.css          → estilos
-js/motor.js             → motor de cálculo (independente da interface)
-js/app.js               → controle de telas e renderização
-data/feriados-2027.js   → base de feriados/pontos facultativos/pontes de 2027
+index.html                        → página única com as 4 telas
+css/estilo.css                    → estilos
+js/motor.js                       → motor de cálculo (independente da interface)
+js/app.js                         → controle de telas e renderização
+js/dados.js                       → carregador: busca os JSON de feriados (fetch) e inicia o App
+js/contador.js                    → contador de acessos (painel visível só p/ o dev)
+data/entes.json                   → metadados dos entes (nome, esfera, pagamento) — sem datas
+data/feriados/nacionais-2027.json → feriados nacionais + facultativos nacionais
+data/feriados/pmrp-2027.json      → feriados da PMRP (2027)
+data/feriados/usp-2027.json       → feriados da USP, com as cidades (2027)
 ```
+
+> **Dados em JSON puro.** Desde a refatoração, os feriados vivem em arquivos **JSON**
+> (não mais num `.js` com objeto global). São dados limpos, seguros e geráveis por
+> automação. O `js/dados.js` carrega esses arquivos via `fetch` e remonta em memória a
+> estrutura que o motor consome.
 
 ## 🔧 Como atualizar os dados (feriados)
 
-Edite **`data/feriados-2027.js`**. O formato é simples:
+Edite o JSON do ente/ano correspondente em **`data/feriados/`**. O formato de cada dia é:
 
-```js
-{ data: "2027-11-04", nome: "Feriado municipal (São Carlos)", tipo: "feriado" }
+```json
+{ "data": "2027-11-04", "nome": "Feriado municipal (São Carlos)", "tipo": "feriado" }
 ```
 
 Tipos: `"feriado"` (dia cheio), `"facultativo"` (ponte/ponto facultativo), `"meio"` (meio período).
@@ -52,7 +62,7 @@ fim de outubro. Como ainda não foi publicado, os pontos facultativos de 2027 ca
 são uma **PREVISÃO** baseada no padrão recorrente da PMRP (decretos de 2025 e 2026):
 Carnaval (08-09/02), Quarta de Cinzas (10/02, meio período), sexta pós-Corpus (28/05),
 Dia do Servidor (28/10), véspera de Natal (24/12) e de Ano-Novo (31/12). Quando o decreto
-oficial sair, confirme e ajuste `entes.pmrp.facultativosLocais` em `data/feriados-2027.js`.
+oficial sair, confirme e ajuste `facultativosLocais` em `data/feriados/pmrp-2027.json`.
 Os **feriados** (20/01, 19/06, Corpus Christi, nacionais e estadual) já são definitivos.
 
 ### 🩸 Doação de sangue
@@ -77,8 +87,18 @@ Regra aplicada: no máximo 1 doação por janela de férias sugerida.
 2. Arraste a pasta inteira do projeto para a página.
 3. Pronto — recebe um link público na hora.
 
-### Opção C — abrir localmente
-Basta dar duplo clique em `index.html`. Funciona offline no seu computador.
+### Opção C — rodar localmente (servidor)
+Como os dados agora são carregados via `fetch`, **abrir o `index.html` por duplo clique
+(`file://`) não funciona** (o navegador bloqueia o `fetch` local por CORS). Rode um
+servidor local simples na pasta do projeto:
+
+```bash
+python3 -m http.server 8000
+# depois acesse http://localhost:8000
+```
+
+(ou `npx serve`, se preferir Node.) No GitHub Pages / Netlify funciona normalmente, sem
+nenhum passo extra.
 
 ## 🔄 Como atualizar o app (passo a passo)
 
@@ -86,7 +106,7 @@ Você NÃO precisa mexer no computador — tudo é feito pelo site do GitHub, no
 
 ### Caminho simples (editar um arquivo pelo GitHub)
 1. Acesse o repositório: `https://github.com/matheusdochapeu-hub/ferias-inteligente`
-2. Clique no arquivo que quer mudar — para feriados, abra `data/feriados-2027.js`.
+2. Clique no arquivo que quer mudar — para feriados da PMRP, abra `data/feriados/pmrp-2027.json`.
 3. Clique no ícone de **lápis** (✏️ "Edit this file"), no canto superior direito do arquivo.
 4. Faça a alteração (ex.: trocar uma data, mudar `tipo`, adicionar um feriado).
 5. Role até o fim e clique em **Commit changes** (botão verde).
@@ -94,11 +114,11 @@ Você NÃO precisa mexer no computador — tudo é feito pelo site do GitHub, no
 
 ### Exemplo prático: confirmar os pontos facultativos da PMRP 2027
 Quando o Decreto Municipal de Ribeirão Preto para 2027 for publicado:
-1. Abra `data/feriados-2027.js` no GitHub e clique no lápis.
-2. Localize o bloco `pmrp` → `facultativosLocais`.
-3. Ajuste/accrescente as datas conforme o decreto, por exemplo:
-   ```js
-   { data: "2027-10-28", nome: "Dia do Servidor Público", tipo: "facultativo" }
+1. Abra `data/feriados/pmrp-2027.json` no GitHub e clique no lápis.
+2. Localize a lista `facultativosLocais`.
+3. Ajuste/acrescente as datas conforme o decreto, por exemplo:
+   ```json
+   { "data": "2027-10-28", "nome": "Dia do Servidor Público", "tipo": "facultativo" }
    ```
    e remova o sufixo "— previsão" dos que forem confirmados.
 4. **Commit changes**. Pronto.
@@ -108,6 +128,13 @@ Se preferir, é só me mandar o decreto/portaria que eu faço a atualização e 
 Útil quando a mudança envolve lógica (não só dados).
 
 ## Expansão futura
-A base de dados é desacoplada por ente/ano. Para adicionar um novo ano, crie
-`data/feriados-2028.js` no mesmo formato e inclua no `index.html`. Para novos órgãos
-(federal, outros municípios), acrescente uma chave em `entes` seguindo o modelo existente.
+A base de dados é desacoplada por **ente/ano** em arquivos JSON. Para adicionar um novo ano
+(ex.: 2028), crie `data/feriados/nacionais-2028.json`, `data/feriados/pmrp-2028.json` e
+`data/feriados/usp-2028.json` no mesmo formato, e aponte o `ANO` em `js/dados.js`. Para novos
+órgãos (federal, outros municípios), acrescente uma chave em `data/entes.json` e crie os
+arquivos de feriados correspondentes.
+
+> 🤖 **Automação anual (em construção):** o objetivo é um GitHub Action que, todo 1º de
+> novembro, gera o rascunho do ano seguinte (nacionais + móveis calculados por fórmula,
+> fixos replicados, facultativos marcados como "previsão") e abre um Pull Request para
+> revisão humana. Esta refatoração para JSON é a base que viabiliza essa geração automática.

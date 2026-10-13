@@ -1,0 +1,21 @@
+{
+  "_comentario": "Metadados dos entes (dados puros, sem datas). As datas de feriados ficam em data/feriados/{ente}-{ano}.json. Para adicionar um novo ente, acrescente uma chave aqui e crie os arquivos de feriados correspondentes.",
+  "entes": {
+    "pmrp": {
+      "id": "pmrp",
+      "nome": "Prefeitura Municipal de Ribeirão Preto",
+      "nomeCurto": "PMRP",
+      "esfera": "Municipal",
+      "pagamento": "Salário no 1º dia útil do mês. Recebimento normal antes e depois das férias.",
+      "temCidades": false
+    },
+    "usp": {
+      "id": "usp",
+      "nome": "Universidade de São Paulo (USP)",
+      "nomeCurto": "USP",
+      "esfera": "Estadual",
+      "pagamento": "Salário no 4º dia útil do mês. Férias são pagas ADIANTADAS, no mês anterior ao gozo.",
+      "temCidades": true
+    }
+  }
+}

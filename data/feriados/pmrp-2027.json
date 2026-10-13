@@ -1,0 +1,20 @@
+{
+  "ente": "pmrp",
+  "ano": 2027,
+  "_observacao": "Pontos facultativos de 2027 são PREVISÃO (padrão PMRP 2025/2026). Confirmar com o Decreto Municipal (previsto p/ fim de out/2026).",
+  "feriadosLocais": [
+    { "data": "2027-01-20", "nome": "Dia de São Sebastião (padroeiro)", "tipo": "feriado" },
+    { "data": "2027-06-19", "nome": "Aniversário de Ribeirão Preto", "tipo": "feriado" }
+  ],
+  "estaduais": [
+    { "data": "2027-07-09", "nome": "Revolução Constitucionalista (estadual SP)", "tipo": "feriado" }
+  ],
+  "facultativosLocais": [
+    { "data": "2027-05-27", "nome": "Corpus Christi", "tipo": "feriado" },
+    { "data": "2027-02-10", "nome": "Quarta-feira de Cinzas (meio período)", "tipo": "meio" },
+    { "data": "2027-05-28", "nome": "Sexta pós-Corpus Christi (ponto facultativo) — previsão", "tipo": "facultativo" },
+    { "data": "2027-10-28", "nome": "Dia do Servidor Público (ponto facultativo) — previsão", "tipo": "facultativo" },
+    { "data": "2027-12-24", "nome": "Véspera de Natal (ponto facultativo) — previsão", "tipo": "facultativo" },
+    { "data": "2027-12-31", "nome": "Véspera de Ano-Novo (ponto facultativo) — previsão", "tipo": "facultativo" }
+  ]
+}
