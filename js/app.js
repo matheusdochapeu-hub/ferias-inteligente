@@ -109,6 +109,33 @@ const App = (function () {
     let txt = ente.nome;
     if (estado.ente === "usp" && estado.cidade) txt += " — " + estado.cidade;
     $("#info-ente").textContent = txt;
+
+    // Opção de 5 dias e aviso de venda: exclusivos da USP
+    const ehUsp = estado.ente === "usp";
+    document.querySelectorAll("[data-usp-only]").forEach((b) => {
+      b.style.display = ehUsp ? "" : "none";
+    });
+    const avisoVenda = $("#aviso-venda");
+    if (avisoVenda) avisoVenda.style.display = ehUsp ? "" : "none";
+  }
+
+  /* Quais nº de dias podem ser escolhidos no 2º período, dado o 1º.
+   * Regras definidas pelo usuário:
+   *   5  -> oferece [15]        (vendeu 10; 5+15 = 20)
+   *   15 -> oferece [15, 5]     (15+15 = 30 cheios  OU  15+5 = 20 vendendo 10)
+   *   10 -> oferece [20]
+   *   20 -> oferece [10]
+   *   30 -> (nada; finaliza)
+   * Observação: 5 só é válido para USP. */
+  function opcoesRestantes(diasEscolhidos, ehUsp) {
+    const mapa = {
+      5:  ehUsp ? [15] : [],
+      10: [20],
+      15: ehUsp ? [15, 5] : [15],
+      20: [10],
+      30: []
+    };
+    return mapa[diasEscolhidos] || [];
   }
 
   /* ---------- Restrições do plano (para o 2º período) ---------- */
@@ -261,12 +288,12 @@ const App = (function () {
   function escolherPeriodo(sugestao) {
     estado.plano.push({ sugestao, modo: estado.modo, dias: estado.dias });
 
-    const usados = estado.plano.reduce((s, p) => s + p.dias, 0);
-    const restantes = TOTAL_FERIAS - usados;
+    const ehUsp = estado.ente === "usp";
+    const opcoes = estado.etapa === 1 ? opcoesRestantes(estado.dias, ehUsp) : [];
 
-    // se ainda sobram dias E ainda estamos na 1ª etapa, pergunta
-    if (restantes > 0 && estado.etapa === 1) {
-      renderDecisao(restantes);
+    // se há opções de 2º período E ainda estamos na 1ª etapa, pergunta
+    if (opcoes.length && estado.etapa === 1) {
+      renderDecisao(opcoes);
       mostrarTela("tela-decisao");
     } else {
       renderFinal();
@@ -274,30 +301,36 @@ const App = (function () {
     }
   }
 
-  function renderDecisao(restantes) {
+  function renderDecisao(opcoes) {
     const p = estado.plano[0];
     $("#decisao-resumo").innerHTML =
       `✅ <strong>1º período escolhido:</strong> ${H.fmtExt(p.sugestao.inicioFerias)} → ` +
       `${H.fmtExt(p.sugestao.fimFerias)} (${p.dias} dias).`;
-    $("#decisao-pergunta").textContent =
-      `Você quer selecionar os ${restantes} dias restantes?`;
+    $("#decisao-pergunta").textContent = opcoes.length > 1
+      ? "Quantos dias você quer selecionar no 2º período?"
+      : `Você quer selecionar os ${opcoes[0]} dias restantes?`;
 
     const wrap = $("#decisao-botoes");
     wrap.innerHTML = "";
-    const simBtn = el("button", "btn-opcao grande", `📅 Sim, planejar os ${restantes} dias restantes`);
-    simBtn.addEventListener("click", () => {
-      estado.etapa = 2;
-      estado.dias = restantes;
-      estado.modo = "corridas"; // recomeça no modo padrão para a nova etapa
-      renderResultados();
-      mostrarTela("tela-resultados");
+
+    // um botão por opção de dias restantes (ex.: 15 oferece [15, 5])
+    opcoes.forEach((dias) => {
+      const b = el("button", "btn-opcao grande", `📅 Sim, planejar ${dias} dias`);
+      b.addEventListener("click", () => {
+        estado.etapa = 2;
+        estado.dias = dias;
+        estado.modo = "corridas"; // recomeça no modo padrão para a nova etapa
+        renderResultados();
+        mostrarTela("tela-resultados");
+      });
+      wrap.appendChild(b);
     });
+
     const fimBtn = el("button", "btn-opcao grande btn-finalizar", "🏁 Finalizar meu plano");
     fimBtn.addEventListener("click", () => {
       renderFinal();
       mostrarTela("tela-final");
     });
-    wrap.appendChild(simBtn);
     wrap.appendChild(fimBtn);
   }
 
@@ -324,9 +357,19 @@ const App = (function () {
       `<div class="final-num"><span>${totalDoa}</span>doações de sangue</div>`;
 
     const sobra = TOTAL_FERIAS - totalDias;
-    $("#final-sobra").innerHTML = sobra > 0
-      ? `ℹ️ Você ainda tem <strong>${sobra} dias</strong> de férias não planejados neste app.`
-      : `✅ Você planejou todos os ${TOTAL_FERIAS} dias de férias do ano.`;
+    const ehUsp = estado.ente === "usp";
+    if (sobra === 0) {
+      $("#final-sobra").innerHTML = `✅ Você planejou todos os ${TOTAL_FERIAS} dias de férias do ano.`;
+    } else if (ehUsp && totalDias === 20) {
+      // 15+5 ou 5+15: compatível com quem vendeu 10 dias (abono pecuniário)
+      $("#final-sobra").innerHTML =
+        `✅ Você planejou <strong>20 dias</strong> de férias. ` +
+        `Os outros <strong>10 dias</strong> podem ter sido vendidos (abono pecuniário).`;
+    } else {
+      $("#final-sobra").innerHTML =
+        `ℹ️ Você ainda tem <strong>${sobra} dias</strong> de férias não planejados neste app` +
+        (ehUsp ? ` (ou vendidos como abono pecuniário)` : ``) + `.`;
+    }
 
     // períodos
     const cont = $("#final-periodos");
