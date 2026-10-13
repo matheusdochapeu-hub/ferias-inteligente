@@ -92,6 +92,17 @@ h2 {
 .btn-cidade { padding: 14px 10px; font-size: 0.95rem; }
 .btn-dias { font-size: 1.3rem; padding: 26px; }
 .btn-dias small { display: block; font-size: 0.78rem; font-weight: 600; color: var(--verde); margin-top: 2px; }
+
+/* grade de meses (preferência) */
+.grid-meses { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.btn-mes { padding: 16px 8px; font-size: 1rem; }
+.btn-mes.sel {
+  background: var(--azul);
+  color: #fff;
+  border-color: var(--azul-escuro);
+}
+.btn-aplicar { background: var(--verde); color: #fff; }
+.btn-aplicar:hover { background: #1b5e20; }
 .btn-dias-usp { border: 2px dashed #a5d6a7; }
 
 /* ---------- Botões de navegação ---------- */

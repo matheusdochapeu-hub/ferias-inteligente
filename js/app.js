@@ -15,7 +15,8 @@ const App = (function () {
     dias: null,       // dias da ETAPA atual (10|15|20|30 ou o que sobrou)
     modo: "corridas", // modo de cálculo atual
     plano: [],        // períodos já escolhidos: [{ sugestao, modo, dias }]
-    etapa: 1          // 1 = primeira seleção, 2 = segunda (dias restantes)
+    etapa: 1,         // 1 = primeira seleção, 2 = segunda (dias restantes)
+    mesesPreferidos: [] // meses (0-11) p/ filtrar o INÍCIO das férias; vazio = todos
   };
 
   const TOTAL_FERIAS = 30; // direito total de dias no ano
@@ -60,8 +61,15 @@ const App = (function () {
     document.querySelectorAll(".btn-dias").forEach((b) =>
       b.addEventListener("click", () => {
         estado.dias = Number(b.getAttribute("data-dias"));
-        renderResultados();
-        mostrarTela("tela-resultados");
+        // na 1ª etapa pergunta preferência de mês; na 2ª (dias restantes) vai direto
+        if (estado.etapa === 1) {
+          estado.mesesPreferidos = [];
+          renderPreferenciaMes();
+          mostrarTela("tela-mes");
+        } else {
+          renderResultados();
+          mostrarTela("tela-resultados");
+        }
       })
     );
 
@@ -75,6 +83,18 @@ const App = (function () {
     // imprimir / salvar o plano em PDF (usa a caixa de impressão do navegador)
     const pdf = $("#btn-pdf");
     if (pdf) pdf.addEventListener("click", () => window.print());
+
+    // preferência de mês
+    $("#mes-nao").addEventListener("click", () => avançarComMeses([]));          // sem preferência
+    $("#mes-todos").addEventListener("click", () => avançarComMeses([]));        // todos os meses
+    $("#mes-sim").addEventListener("click", () => {                              // tem preferência
+      $("#mes-selecao").style.display = "";
+      $("#mes-selecao").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    $("#mes-aplicar").addEventListener("click", () => {
+      const sel = [...document.querySelectorAll(".btn-mes.sel")].map((b) => Number(b.getAttribute("data-mes")));
+      avançarComMeses(sel); // se nada selecionado, [] = todos
+    });
   }
 
   function resetar() {
@@ -84,6 +104,7 @@ const App = (function () {
     estado.modo = "corridas";
     estado.plano = [];
     estado.etapa = 1;
+    estado.mesesPreferidos = [];
   }
 
   /* ---------- Tela cidade (USP) ---------- */
@@ -138,6 +159,46 @@ const App = (function () {
     return mapa[diasEscolhidos] || [];
   }
 
+  /* ---------- Tela: preferência de mês ---------- */
+  function renderPreferenciaMes() {
+    const ente = window.CALENDARIOS[2027].entes[estado.ente];
+    let txt = ente.nome;
+    if (estado.ente === "usp" && estado.cidade) txt += " — " + estado.cidade;
+    $("#mes-info").textContent = `${txt} · ${estado.dias} dias`;
+
+    // garante que a grade de meses exista (gerada uma vez)
+    const grade = $("#grid-meses");
+    if (!grade.dataset.pronto) {
+      grade.innerHTML = "";
+      for (let m = 0; m < 12; m++) {
+        const b = el("button", "btn-opcao btn-mes", nomeMesExtenso(m));
+        b.setAttribute("data-mes", String(m));
+        b.setAttribute("aria-pressed", "false");
+        b.addEventListener("click", () => {
+          b.classList.toggle("sel");
+          const sel = b.classList.contains("sel");
+          b.setAttribute("aria-pressed", sel ? "true" : "false");
+        });
+        grade.appendChild(b);
+      }
+      grade.dataset.pronto = "1";
+    } else {
+      // limpa seleção anterior
+      grade.querySelectorAll(".btn-mes").forEach((b) => {
+        b.classList.remove("sel");
+        b.setAttribute("aria-pressed", "false");
+      });
+    }
+    // a parte de seleção de meses começa escondida (só aparece se "Sim")
+    $("#mes-selecao").style.display = "none";
+  }
+
+  function avançarComMeses(meses) {
+    estado.mesesPreferidos = meses;
+    renderResultados();
+    mostrarTela("tela-resultados");
+  }
+
   /* ---------- Restrições do plano (para o 2º período) ---------- */
   function restricoesDoPlano() {
     const diasBloqueados = new Set();
@@ -160,10 +221,13 @@ const App = (function () {
     const etapaTxt = estado.etapa === 2
       ? ` &nbsp;·&nbsp; <em>2º período — ${estado.dias} dias restantes</em>`
       : "";
+    const mesesTxt = (estado.mesesPreferidos && estado.mesesPreferidos.length)
+      ? ` &nbsp;·&nbsp; 📌 ${estado.mesesPreferidos.slice().sort((a, b) => a - b).map(nomeMesExtenso).join(", ")}`
+      : "";
     $("#res-cabecalho").innerHTML =
       `<strong>${ente.nome}</strong>` +
       (estado.ente === "usp" && estado.cidade ? ` — ${estado.cidade}` : "") +
-      ` &nbsp;·&nbsp; ${estado.dias} dias de férias &nbsp;·&nbsp; ano 2027` + etapaTxt;
+      ` &nbsp;·&nbsp; ${estado.dias} dias de férias &nbsp;·&nbsp; ano 2027` + etapaTxt + mesesTxt;
 
     document.querySelectorAll(".aba[data-modo]").forEach((b) => {
       const ativo = b.getAttribute("data-modo") === estado.modo;
@@ -199,7 +263,13 @@ const App = (function () {
     }
 
     const restr = estado.etapa === 2 ? restricoesDoPlano() : null;
-    const lista = Motor.calcular(estado.ente, estado.cidade, estado.dias, estado.modo, restr);
+    let lista = Motor.calcular(estado.ente, estado.cidade, estado.dias, estado.modo, restr);
+
+    // filtro de preferência de mês: mantém sugestões que INICIAM num mês escolhido
+    if (estado.mesesPreferidos && estado.mesesPreferidos.length) {
+      const meses = new Set(estado.mesesPreferidos);
+      lista = lista.filter((s) => meses.has(s.inicioFerias.getMonth()));
+    }
     const topo = lista.slice(0, 20);
 
     const container = $("#lista-resultados");

@@ -52,6 +52,27 @@
       <button class="btn-voltar" data-voltar="tela-orgao">⬅️ Voltar ao início</button>
     </section>
 
+    <!-- TELA 3B: PREFERÊNCIA DE MÊS -->
+    <section id="tela-mes" class="tela">
+      <h2>Você tem preferência por algum mês?</h2>
+      <p id="mes-info" class="ajuda destaque"></p>
+      <div class="grid-botoes grid-dias">
+        <button id="mes-nao" class="btn-opcao">🙅 Não tenho preferência</button>
+        <button id="mes-sim" class="btn-opcao">📅 Sim, escolher meses</button>
+      </div>
+
+      <div id="mes-selecao" style="display:none">
+        <p class="ajuda">Selecione um ou mais meses — as sugestões vão começar nos meses escolhidos:</p>
+        <div id="grid-meses" class="grid-botoes grid-meses"></div>
+        <div class="grid-botoes grid-dias" style="margin-top:14px">
+          <button id="mes-todos" class="btn-opcao">🗓️ Todos os meses</button>
+          <button id="mes-aplicar" class="btn-opcao btn-aplicar">✓ Aplicar seleção</button>
+        </div>
+      </div>
+
+      <button class="btn-voltar" data-voltar="tela-dias">⬅️ Mudar número de dias</button>
+    </section>
+
     <!-- TELA 4: RESULTADOS -->
     <section id="tela-resultados" class="tela">
       <div class="nav-topo">
