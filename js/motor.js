@@ -60,7 +60,7 @@ const Motor = (function () {
   /* Monta o mapa de dias especiais do ano para o ente/cidade selecionados.
    * Retorna { "AAAA-MM-DD": { nome, tipo } }. */
   function montarCalendario(enteId, cidade) {
-    const C = window.CALENDARIOS[2027];
+    const C = window.CALENDARIOS[window.ANO_ATIVO];
     const mapa = {};
     // >= na comparação: a ÚLTIMA fonte de mesma prioridade sobrescreve (permite
     // que a versão local/"previsão" prevaleça sobre a nacional genérica).
@@ -486,8 +486,9 @@ const Motor = (function () {
    */
   function calcular(enteId, cidade, diasFerias, modo, restricoes) {
     const mapa = montarCalendario(enteId, cidade);
-    const inicioAno = new Date(2027, 0, 1);
-    const fimAno = new Date(2027, 11, 31);
+    const ano = window.ANO_ATIVO;
+    const inicioAno = new Date(ano, 0, 1);
+    const fimAno = new Date(ano, 11, 31);
     const candidatos = [];
     const r = restricoes || {};
 

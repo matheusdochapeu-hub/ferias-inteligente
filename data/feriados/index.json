@@ -1,0 +1,6 @@
+{
+  "_comentario": "Lista os anos com dados de feriados publicados. O app escolhe qual exibir (ver js/dados.js: mostra o maior ano, mas só 'vira' para o próximo a partir de 1º de outubro). O gerador (scripts/gerar-ano.js) atualiza esta lista ao criar um novo ano.",
+  "anos": [
+    2027
+  ]
+}
