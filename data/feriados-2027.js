@@ -43,7 +43,9 @@ window.CALENDARIOS[2027] = {
   nacionaisFacultativos: [
     { data: "2027-02-08", nome: "Carnaval (ponto facultativo)", tipo: "facultativo" },
     { data: "2027-02-09", nome: "Carnaval (ponto facultativo)", tipo: "facultativo" },
-    { data: "2027-02-10", nome: "Quarta-feira de Cinzas (meio período)", tipo: "meio" },
+    // Quarta-feira de Cinzas (10/02) NÃO fica aqui: o tratamento difere por ente.
+    //  - USP: atividades suspensas => feriado cheio (ver entes.usp.estaduais)
+    //  - PMRP: expediente de meio período (ver entes.pmrp.facultativosLocais)
     // Pontos facultativos de out/nov 2027 — válidos para USP e PMRP.
     { data: "2027-10-29", nome: "Ponto facultativo (pós Dia do Servidor)", tipo: "facultativo" },
     { data: "2027-11-01", nome: "Ponto facultativo (ponte de Finados)", tipo: "facultativo" }
@@ -81,7 +83,9 @@ window.CALENDARIOS[2027] = {
         // Baseados no padrão recorrente da PMRP (decretos de 2025 e 2026).
         // ⚠️ PREVISÃO — substituir pelos dados oficiais quando o Decreto
         //    Municipal de 2027 for publicado (previsto p/ fim de out/2026).
-        // (Carnaval 08-09/02 e Quarta de Cinzas 10/02 já vêm de "nacionaisFacultativos".)
+        // (Carnaval 08-09/02 vem de "nacionaisFacultativos".)
+        // Quarta de Cinzas na PMRP: expediente de MEIO PERÍODO.
+        { data: "2027-02-10", nome: "Quarta-feira de Cinzas (meio período)", tipo: "meio" },
         { data: "2027-05-28", nome: "Sexta pós-Corpus Christi (ponto facultativo) — previsão", tipo: "facultativo" },
         { data: "2027-10-28", nome: "Dia do Servidor Público (ponto facultativo) — previsão", tipo: "facultativo" },
         { data: "2027-12-24", nome: "Véspera de Natal (ponto facultativo) — previsão", tipo: "facultativo" },
@@ -103,6 +107,8 @@ window.CALENDARIOS[2027] = {
       pagamento: "Salário no 4º dia útil do mês. Férias são pagas ADIANTADAS, no mês anterior ao gozo.",
       // Feriados ESTADUAIS/base válidos para toda a USP (além dos nacionais):
       estaduais: [
+        // Quarta de Cinzas na USP: atividades suspensas => DIA NÃO TRABALHADO (feriado).
+        { data: "2027-02-10", nome: "Quarta-feira de Cinzas (atividades suspensas)", tipo: "feriado" },
         { data: "2027-05-27", nome: "Corpus Christi", tipo: "feriado" },
         { data: "2027-07-09", nome: "Revolução Constitucionalista (estadual SP)", tipo: "feriado" }
       ],

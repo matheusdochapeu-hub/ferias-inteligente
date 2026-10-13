@@ -175,9 +175,15 @@ const App = (function () {
 
     const cinzasISO = window.CALENDARIOS[2027].quartaDeCinzas;
     const cinzas = H.parse(cinzasISO);
-    $("#aviso-cinzas").innerHTML =
-      `🔸 <strong>Quarta-feira de Cinzas (${H.fmt(cinzas)}/2027):</strong> ` +
-      `expediente de meio período — ótimo para encurtar o dia, mas não é feriado cheio.`;
+    if (estado.ente === "usp") {
+      $("#aviso-cinzas").innerHTML =
+        `🔸 <strong>Quarta-feira de Cinzas (${H.fmt(cinzas)}/2027):</strong> ` +
+        `na USP as atividades ficam suspensas — tratada como dia não trabalhado (feriado).`;
+    } else {
+      $("#aviso-cinzas").innerHTML =
+        `🔸 <strong>Quarta-feira de Cinzas (${H.fmt(cinzas)}/2027):</strong> ` +
+        `expediente de meio período — ótimo para encurtar o dia, mas não é feriado cheio.`;
+    }
 
     // aviso do que já foi escolhido (etapa 2)
     const avisoPlano = $("#aviso-plano");
