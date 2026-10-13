@@ -58,17 +58,23 @@ const App = (function () {
     const titulo = document.querySelector("title");
     if (titulo) titulo.textContent = `Férias Inteligente — Servidores Públicos (${ano})`;
 
+    $("#btn-usp").addEventListener("click", () => {
+      estado.ente = "usp";
+      estado.cidade = null;
+      renderCidades();
+      mostrarTela("tela-cidade");
+    });
     $("#btn-pmrp").addEventListener("click", () => {
       estado.ente = "pmrp";
       estado.cidade = "Ribeirão Preto";
       mostrarTela("tela-dias");
       renderInfoEnte();
     });
-    $("#btn-usp").addEventListener("click", () => {
-      estado.ente = "usp";
-      estado.cidade = null;
-      renderCidades();
-      mostrarTela("tela-cidade");
+    $("#btn-limeira").addEventListener("click", () => {
+      estado.ente = "limeira";
+      estado.cidade = null; // Limeira (município) não tem seleção de cidade
+      mostrarTela("tela-dias");
+      renderInfoEnte();
     });
 
     document.querySelectorAll("[data-voltar]").forEach((b) =>

@@ -253,6 +253,21 @@ const pmrpDoc = {
 };
 escreverJSON(`pmrp-${ANO_ALVO}.json`, pmrpDoc);
 
+/* ---- Limeira ---- */
+// Limeira é município de SP (mesma estrutura da PMRP). Feriado municipal próprio
+// confirmado: 15/09 (N. Sra. das Dores / Aniversário). Fixos replicados; móveis
+// recalculados; facultativos/pontes como previsão (confirmar com Decreto de Limeira).
+const limeiraMolde = lerJSON(`limeira-${ANO_MOLDE}.json`);
+const limeiraDoc = {
+  ente: "limeira",
+  ano: ANO_ALVO,
+  _observacao: `Rascunho ${ANO_ALVO}: feriados fixos replicados; móveis recalculados; facultativos/pontes são PREVISÃO (confirmar com o Decreto Municipal de Limeira — site oficial bloqueia bot, conferir manualmente).`,
+  feriadosLocais: replicarLista(limeiraMolde.feriadosLocais, mapaMv, ANO_ALVO),
+  estaduais: replicarLista(limeiraMolde.estaduais, mapaMv, ANO_ALVO),
+  facultativosLocais: replicarLista(limeiraMolde.facultativosLocais, mapaMv, ANO_ALVO)
+};
+escreverJSON(`limeira-${ANO_ALVO}.json`, limeiraDoc);
+
 /* ---- USP ---- */
 // estaduais da USP já contém Cinzas (feriado) e Corpus (feriado), ambos móveis;
 // replicarLista recalcula pela data móvel. Rev. Constitucionalista é fixo.

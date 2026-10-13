@@ -3,8 +3,14 @@
 App web (100% no navegador, **sem backend**) que sugere as **melhores datas para tirar férias**
 e **emendar feriados** para:
 
-- **Servidores da Prefeitura Municipal de Ribeirão Preto (PMRP)** — esfera municipal
 - **Servidores da USP** — esfera estadual, em diversas cidades
+- **Servidores da Prefeitura Municipal de Ribeirão Preto (PMRP)** — esfera municipal
+- **Servidores da Prefeitura Municipal de Limeira** — esfera municipal
+
+> **Regras de abonadas por ente.** USP e PMRP: 1 abonada por mês, teto de 6/ano. **Limeira**:
+> teto de **12/ano** e é permitido **2 abonadas em um único mês** do ano (os demais meses: 1/mês);
+> essa cota de "mês duplo" **não vale** quando as férias são fracionadas em mais de um período.
+> As regras ficam em `data/entes.json` (campo `abonadas`) e são aplicadas por `js/motor.js`.
 
 ## Como funciona
 

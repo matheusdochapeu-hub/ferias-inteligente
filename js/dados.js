@@ -52,8 +52,10 @@
   }
 
   /* Remonta window.CALENDARIOS[ano] no mesmo formato do antigo feriados-ANO.js */
-  function montarCalendarios(ano, entesDoc, nacionais, pmrp, usp) {
+  function montarCalendarios(ano, entesDoc, nacionais, pmrp, usp, limeira) {
     const entes = entesDoc.entes;
+    // regra de abonada padrão (fallback) caso um ente não traga o campo
+    const abonadaPadrao = { maxPorMes: 1, tetoAno: 6, mesesDuplosNoAno: 0 };
 
     const calendario = {
       ano: nacionais.ano,
@@ -61,27 +63,41 @@
       nacionais: nacionais.nacionais || [],
       nacionaisFacultativos: nacionais.nacionaisFacultativos || [],
       entes: {
-        pmrp: {
-          id: entes.pmrp.id,
-          nome: entes.pmrp.nome,
-          nomeCurto: entes.pmrp.nomeCurto,
-          esfera: entes.pmrp.esfera,
-          pagamento: entes.pmrp.pagamento,
-          feriadosLocais: pmrp.feriadosLocais || [],
-          estaduais: pmrp.estaduais || [],
-          facultativosLocais: pmrp.facultativosLocais || [],
-          _observacao: pmrp._observacao
-        },
         usp: {
           id: entes.usp.id,
           nome: entes.usp.nome,
           nomeCurto: entes.usp.nomeCurto,
           esfera: entes.usp.esfera,
           pagamento: entes.usp.pagamento,
+          abonadas: entes.usp.abonadas || abonadaPadrao,
           estaduais: usp.estaduais || [],
           facultativosGerais: usp.facultativosGerais || [],
           cidades: usp.cidades || {},
           _observacao: usp._observacao
+        },
+        pmrp: {
+          id: entes.pmrp.id,
+          nome: entes.pmrp.nome,
+          nomeCurto: entes.pmrp.nomeCurto,
+          esfera: entes.pmrp.esfera,
+          pagamento: entes.pmrp.pagamento,
+          abonadas: entes.pmrp.abonadas || abonadaPadrao,
+          feriadosLocais: pmrp.feriadosLocais || [],
+          estaduais: pmrp.estaduais || [],
+          facultativosLocais: pmrp.facultativosLocais || [],
+          _observacao: pmrp._observacao
+        },
+        limeira: {
+          id: entes.limeira.id,
+          nome: entes.limeira.nome,
+          nomeCurto: entes.limeira.nomeCurto,
+          esfera: entes.limeira.esfera,
+          pagamento: entes.limeira.pagamento,
+          abonadas: entes.limeira.abonadas || abonadaPadrao,
+          feriadosLocais: limeira.feriadosLocais || [],
+          estaduais: limeira.estaduais || [],
+          facultativosLocais: limeira.facultativosLocais || [],
+          _observacao: limeira._observacao
         }
       }
     };
@@ -109,8 +125,9 @@
     return Promise.all([
       carregarJSON(`data/feriados/nacionais-${ano}.json`),
       carregarJSON(`data/feriados/pmrp-${ano}.json`),
-      carregarJSON(`data/feriados/usp-${ano}.json`)
-    ]).then(([nacionais, pmrp, usp]) => ({ ano, entesDoc, nacionais, pmrp, usp }));
+      carregarJSON(`data/feriados/usp-${ano}.json`),
+      carregarJSON(`data/feriados/limeira-${ano}.json`)
+    ]).then(([nacionais, pmrp, usp, limeira]) => ({ ano, entesDoc, nacionais, pmrp, usp, limeira }));
   }
 
   function iniciar() {
@@ -138,8 +155,8 @@
           );
         });
       })
-      .then(({ ano, entesDoc, nacionais, pmrp, usp }) => {
-        montarCalendarios(ano, entesDoc, nacionais, pmrp, usp);
+      .then(({ ano, entesDoc, nacionais, pmrp, usp, limeira }) => {
+        montarCalendarios(ano, entesDoc, nacionais, pmrp, usp, limeira);
         if (window.App && typeof window.App.iniciar === "function") {
           window.App.iniciar();
         }

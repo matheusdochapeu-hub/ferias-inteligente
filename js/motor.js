@@ -77,7 +77,8 @@ const Motor = (function () {
     add(C.nacionaisFacultativos);
 
     const ente = C.entes[enteId];
-    if (enteId === "pmrp") {
+    if (enteId === "pmrp" || enteId === "limeira") {
+      // municípios (RP e Limeira) seguem a mesma estrutura de dados
       add(ente.feriadosLocais);
       add(ente.estaduais);
       add(ente.facultativosLocais);
@@ -203,6 +204,15 @@ const Motor = (function () {
     const doacoesPlano = restricoes.doacoesUsadas || []; // Date[] já marcadas no plano
     const DIST_DOACAO_DIAS = 90; // doação de sangue: 1 a cada ~3 meses
 
+    // Regras de abonada do ente (parametrizadas em data/entes.json):
+    //   maxPorMes        -> teto normal por mês-calendário (ex.: 1)
+    //   tetoAno          -> teto por janela/ano (ex.: 6 na USP/PMRP, 12 em Limeira)
+    //   mesesDuplosNoAno -> quantos meses no ano podem ter 2 abonadas (Limeira = 1)
+    // A cota de "mês duplo" NÃO vale quando as férias são fracionadas (restricoes.fracionado).
+    const regras = restricoes.regrasAbonada || { maxPorMes: 1, tetoAno: 6, mesesDuplosNoAno: 0 };
+    const permiteMesDuplo = !restricoes.fracionado && (regras.mesesDuplosNoAno || 0) > 0;
+    let mesesDuplosRestantes = permiteMesDuplo ? regras.mesesDuplosNoAno : 0;
+
     function abonadasNoMes(mesKey) { return abonadasPorMes[mesKey] || 0; }
 
     // doação só é permitida se estiver a >=90 dias de qualquer doação já no plano
@@ -210,11 +220,26 @@ const Motor = (function () {
       return doacoesPlano.every((d) => Math.abs(diffDias(d, dia)) >= DIST_DOACAO_DIAS);
     }
 
+    // Pode reservar uma abonada neste mês?
+    //  - respeita o teto do ano (res.abonadas.length < tetoAno);
+    //  - o mês não pode ter sido usado em outro período do plano;
+    //  - normalmente 1/mês (maxPorMes); mas, se o ente tem cota de "mês duplo"
+    //    disponível, permite a 2ª abonada do mês consumindo essa cota.
+    function podeAbonarNoMes(mesKey) {
+      if (res.abonadas.length >= regras.tetoAno) return false;
+      if (mesesJaUsados.has(mesKey)) return false;
+      const atual = abonadasNoMes(mesKey);
+      if (atual < regras.maxPorMes) return true;              // dentro do limite normal
+      if (atual === regras.maxPorMes && mesesDuplosRestantes > 0) return "duplo"; // usa cota de mês duplo
+      return false;
+    }
+
     // tenta reservar um recurso para "comprar" o dia (prioriza abonada, senão doação)
     function reservar(dia) {
       const mesKey = iso(dia).slice(0, 7);
-      // abonada: 1 por mês neste período E o mês não pode ter sido usado em outro período
-      if (cfg.usarAbonadas && abonadasNoMes(mesKey) < 1 && !mesesJaUsados.has(mesKey) && res.abonadas.length < 6) {
+      const pode = cfg.usarAbonadas && podeAbonarNoMes(mesKey);
+      if (pode) {
+        if (pode === "duplo") mesesDuplosRestantes--; // consome a cota de mês duplo
         abonadasPorMes[mesKey] = abonadasNoMes(mesKey) + 1;
         res.abonadas.push({ dt: new Date(dia), motivo: "Abonada (ponte)" });
         return "abonada";
@@ -384,13 +409,15 @@ const Motor = (function () {
         const c = classificar(alvo, mapa);
         if (c.estado !== "util") break; // ponta já livre: recomputarBloco já cobriu
         const mesKey = iso(alvo).slice(0, 7);
-        // abonada disponível p/ aquele mês (1/mês neste período, mês não usado em
-        // outro período do plano) e dentro do teto anual de 6.
-        if (!(abonadasNoMes(mesKey) < 1 && !mesesJaUsados.has(mesKey) && res.abonadas.length < 6)) break;
+        // abonada disponível p/ aquele mês conforme as REGRAS DO ENTE (teto anual,
+        // 1/mês ou cota de mês duplo), e mês não usado em outro período do plano.
+        const pode = podeAbonarNoMes(mesKey);
+        if (!pode) break;
 
         // simula a compra e mede o ganho líquido de descanso
         const descAntes = diffDias(res.blocoInicio, res.blocoFim) + 1;
         const salvoIni = new Date(res.blocoInicio), salvoFim = new Date(res.blocoFim);
+        if (pode === "duplo") mesesDuplosRestantes--; // consome a cota de mês duplo
         abonadasPorMes[mesKey] = abonadasNoMes(mesKey) + 1;
         const marca = { dt: new Date(alvo), motivo: "Abonada (ponta das férias)" };
         res.abonadas.push(marca);
@@ -401,6 +428,7 @@ const Motor = (function () {
 
         if (descDepois - descAntes < 1) {
           // não houve ganho real -> desfaz a compra e encerra esta ponta
+          if (pode === "duplo") mesesDuplosRestantes++; // devolve a cota
           abonadasPorMes[mesKey] = abonadasNoMes(mesKey) - 1;
           res.abonadas = res.abonadas.filter((a) => a !== marca);
           res.blocoInicio = salvoIni; res.blocoFim = salvoFim;
@@ -491,6 +519,14 @@ const Motor = (function () {
     const fimAno = new Date(ano, 11, 31);
     const candidatos = [];
     const r = restricoes || {};
+
+    // injeta as REGRAS DE ABONADA do ente (de data/entes.json via CALENDARIOS)
+    // para que avaliarInicio/aplicarRecursos as respeitem. Fallback conservador.
+    const enteObj = window.CALENDARIOS[ano].entes[enteId];
+    r.regrasAbonada = (enteObj && enteObj.abonadas) || { maxPorMes: 1, tetoAno: 6, mesesDuplosNoAno: 0 };
+    // "fracionado" = este cálculo é de um 2º período (há restrições de outro
+    // período). A cota de "mês duplo" (Limeira) NÃO vale quando fracionado.
+    r.fracionado = !!(r.diasBloqueados || r.mesesAbonadaUsados || r.doacoesUsadas);
 
     for (let d = new Date(inicioAno); d <= fimAno; d = addDias(d, 1)) {
       const c = classificar(d, mapa);
