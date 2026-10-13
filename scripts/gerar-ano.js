@@ -72,6 +72,18 @@ function escreverJSON(arquivo, obj) {
 function trocaAno(dataISO, ano) {
   return `${ano}-${dataISO.slice(5)}`;
 }
+// garante uma data de calendário válida; corrige 29/02 em ano não bissexto -> 28/02
+function validarData(dataISO, ano) {
+  const [a, m, d] = dataISO.split("-").map(Number);
+  const dt = new Date(a, m - 1, d);
+  // se o dia "transbordou" (ex.: 29/02 em ano comum vira 01/03), reancora para
+  // o último dia válido do mês original.
+  if (dt.getMonth() !== m - 1) {
+    const ultimoDia = new Date(a, m, 0).getDate();
+    return `${a}-${String(m).padStart(2, "0")}-${String(ultimoDia).padStart(2, "0")}`;
+  }
+  return dataISO;
+}
 // marca um item como previsão (sufixo no nome + flag)
 function comoPrevisao(item) {
   const nome = /previs[ãa]o/i.test(item.nome) ? item.nome : item.nome + " — previsão";
@@ -94,24 +106,32 @@ function mapaMoveis(anoMolde, anoAlvo) {
 }
 
 /* Datas que são "derivadas" de um móvel por proximidade (ex.: sexta pós-Corpus,
- * véspera/ponte colada a um feriado móvel). Detecta se a data do molde está a
- * ±1 dia de um móvel e, se sim, desloca pela MESMA diferença no ano-alvo. */
-function ajustarDerivadaDeMovel(dataISO, anoMolde, mapaMv, anoAlvo) {
+ * véspera/ponte colada a um feriado móvel) e, por isso, acompanham o móvel ao
+ * mudar de ano. Detecta se a data do molde está a ±1..3 dias de um móvel e, se
+ * sim, desloca pela MESMA diferença no ano-alvo, usando a âncora MAIS PRÓXIMA.
+ *
+ * IMPORTANTE: só se aplica a PONTES/FACULTATIVOS (tipo "facultativo"/"meio").
+ * Um feriado FIXO de data civil (ex.: um feriado municipal que por acaso cai
+ * perto do Corpus) NÃO deve se mover com a Páscoa — fixos são tratados por
+ * trocaAno. Por isso esta função só é chamada para itens facultativos/meio. */
+function ajustarDerivadaDeMovel(dataISO, anoMolde, anoAlvo) {
   const dm = Moveis.datasMoveis(anoMolde);
   const alvo = Moveis.datasMoveis(anoAlvo);
   const nomes = ["sextaFeiraSanta", "corpusChristi", "quartaDeCinzas", "carnavalSegunda", "carnavalTerca"];
   const [a, mes, d] = dataISO.split("-").map(Number);
   const dt = new Date(a, mes - 1, d);
+  // escolhe a âncora móvel de MENOR distância (não a primeira da lista)
+  let melhor = null;
   for (const k of nomes) {
-    const ref = dm[k];
-    const diff = Math.round((dt - ref) / 86400000);
+    const diff = Math.round((dt - dm[k]) / 86400000);
     if (Math.abs(diff) >= 1 && Math.abs(diff) <= 3) {
-      // é uma data colada a um móvel -> aplica o mesmo deslocamento no alvo
-      const novo = new Date(alvo[k].getFullYear(), alvo[k].getMonth(), alvo[k].getDate() + diff);
-      return Moveis._util.iso(novo);
+      if (!melhor || Math.abs(diff) < Math.abs(melhor.diff)) melhor = { k, diff };
     }
   }
-  return null; // não é derivada de móvel
+  if (!melhor) return null; // não é derivada de móvel
+  const ref = alvo[melhor.k];
+  const novo = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate() + melhor.diff);
+  return Moveis._util.iso(novo);
 }
 
 /* Replica uma lista do molde para o alvo, tratando móveis de forma genérica:
@@ -124,12 +144,19 @@ function replicarLista(lista, mapaMv, ano) {
   (lista || []).forEach((item) => {
     let dataNova;
     if (mapaMv[item.data]) {
-      dataNova = mapaMv[item.data]; // é exatamente um feriado móvel
-    } else {
-      const derivada = ajustarDerivadaDeMovel(item.data, ANO_MOLDE, mapaMv, ano);
+      // a própria data é um feriado móvel -> usa a data móvel do ano-alvo
+      dataNova = mapaMv[item.data];
+    } else if (ehFacultativo(item.tipo)) {
+      // só pontes/facultativos podem "acompanhar" um móvel vizinho; feriado
+      // fixo NUNCA se move (é sempre replicado por trocaAno).
+      const derivada = ajustarDerivadaDeMovel(item.data, ANO_MOLDE, ano);
       dataNova = derivada || trocaAno(item.data, ano);
+    } else {
+      dataNova = trocaAno(item.data, ano); // feriado fixo
     }
+    dataNova = validarData(dataNova, ano); // trata 29/02 em ano não bissexto
     const novo = { data: dataNova, nome: item.nome, tipo: item.tipo };
+    // facultativos/meio sempre viram previsão (dependem de decreto/portaria).
     out.push(ehFacultativo(item.tipo) ? comoPrevisao(novo) : novo);
   });
   return out;
@@ -137,6 +164,27 @@ function replicarLista(lista, mapaMv, ano) {
 
 /* ===================== geração ===================== */
 console.log(`\nGerando rascunho de ${ANO_ALVO} a partir do molde ${ANO_MOLDE}...\n`);
+
+/* Proteção contra "cascata de rascunho": se o ano-molde ainda contém itens
+ * marcados como previsão (não revisados por um humano), gerar o próximo ano a
+ * partir dele propagaria estimativas sobre estimativas. Recusamos — a menos que
+ * o usuário force explicitamente com --permitir-molde-previsao. */
+function moldeTemPrevisao(ano) {
+  const arquivos = [`nacionais-${ano}.json`, `pmrp-${ano}.json`, `usp-${ano}.json`];
+  const temFlag = (obj) => JSON.stringify(obj).includes('"previsao":true') || JSON.stringify(obj).includes('"previsao": true');
+  return arquivos.some((a) => {
+    try { return temFlag(lerJSON(a)); } catch (_) { return false; }
+  });
+}
+if (!process.argv.includes("--permitir-molde-previsao") && moldeTemPrevisao(ANO_MOLDE)) {
+  console.error(
+    `✖ O ano-molde ${ANO_MOLDE} ainda tem itens "previsao": true (não revisados).\n` +
+    `  Gerar a partir dele propagaria previsões sobre previsões. Primeiro revise e\n` +
+    `  confirme os feriados de ${ANO_MOLDE} (removendo a flag "previsao"), ou rode com\n` +
+    `  --molde <ano confirmado>. Para forçar mesmo assim: --permitir-molde-previsao.`
+  );
+  process.exit(1);
+}
 
 const mapaMv = mapaMoveis(ANO_MOLDE, ANO_ALVO);
 const mv = Moveis.datasMoveisISO(ANO_ALVO); // datas móveis do ano-alvo
