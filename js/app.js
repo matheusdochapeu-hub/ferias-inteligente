@@ -333,7 +333,9 @@ const App = (function () {
     cont.innerHTML = "";
     estado.plano.forEach((p, idx) => {
       const bloco = el("div", "final-periodo");
-      bloco.appendChild(el("h3", null, `Período ${idx + 1} — ${p.dias} dias`));
+      bloco.appendChild(el("h3", null,
+        `Período ${idx + 1} — ${p.dias} dias que se tornaram ` +
+        `<span class="virou-dias">${p.sugestao.totalDescanso} dias</span>`));
       bloco.appendChild(linhasSugestao(p.sugestao));
       bloco.appendChild(montarCalendarioVisual(p.sugestao, estado.ente, estado.cidade));
       cont.appendChild(bloco);

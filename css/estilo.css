@@ -398,6 +398,7 @@ h2 {
   border-left: 4px solid var(--verde);
 }
 .final-periodo h3 { margin: 0 0 10px; color: var(--azul-escuro); }
+.virou-dias { color: var(--verde); font-weight: 800; }
 .btn-pdf { background: #fff; border: 1px solid var(--azul); font-weight: 700; }
 .rodape-final {
   text-align: center;
