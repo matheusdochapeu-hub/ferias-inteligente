@@ -43,7 +43,10 @@ window.CALENDARIOS[2027] = {
   nacionaisFacultativos: [
     { data: "2027-02-08", nome: "Carnaval (ponto facultativo)", tipo: "facultativo" },
     { data: "2027-02-09", nome: "Carnaval (ponto facultativo)", tipo: "facultativo" },
-    { data: "2027-02-10", nome: "Quarta-feira de Cinzas (meio período)", tipo: "meio" }
+    { data: "2027-02-10", nome: "Quarta-feira de Cinzas (meio período)", tipo: "meio" },
+    // Pontos facultativos de out/nov 2027 — válidos para USP e PMRP.
+    { data: "2027-10-29", nome: "Ponto facultativo (pós Dia do Servidor)", tipo: "facultativo" },
+    { data: "2027-11-01", nome: "Ponto facultativo (ponte de Finados)", tipo: "facultativo" }
   ],
 
   entes: {
