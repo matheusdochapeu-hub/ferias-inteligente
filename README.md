@@ -13,7 +13,9 @@ e **emendar feriados** para:
 3. **Dias de férias:** 10, 15, 20 ou 30 dias.
 4. **Resultados** em duas abas, listados da **melhor para a pior** opção:
    - **Férias corridas:** melhores datas emendando feriados municipais, estaduais e federais.
-   - **Com abonadas:** usa abonadas (máx. 6/ano, 1 por mês) para maximizar os dias em casa.
+   - **Com abonadas + doação de sangue:** usa abonadas (máx. 6/ano, 1 por mês) e, quando a
+     abonada do mês já foi usada, a folga por doação de sangue (1 a cada 3 meses) para
+     maximizar os dias em casa.
 
 Informações exibidas (apenas informativas):
 - **Pagamento:** PMRP recebe no 1º dia útil; USP no 4º dia útil, com férias pagas adiantadas.
@@ -39,11 +41,19 @@ Edite **`data/feriados-2027.js`**. O formato é simples:
 
 Tipos: `"feriado"` (dia cheio), `"facultativo"` (ponte/ponto facultativo), `"meio"` (meio período).
 
-### ⚠️ Pendência: Pontos facultativos da PMRP 2027
+### ⚠️ Pontos facultativos da PMRP 2027 (PREVISÃO)
 O Decreto Municipal de Ribeirão Preto com o calendário oficial de 2027 costuma sair no
-fim de outubro. Até lá, estão cadastrados os **feriados fixos por lei** (20/01 e 19/06) +
-nacionais + estadual. Confirme os pontos facultativos quando o decreto for publicado e
-atualize `entes.pmrp.facultativosLocais`.
+fim de outubro. Como ainda não foi publicado, os pontos facultativos de 2027 cadastrados
+são uma **PREVISÃO** baseada no padrão recorrente da PMRP (decretos de 2025 e 2026):
+Carnaval (08-09/02), Quarta de Cinzas (10/02, meio período), sexta pós-Corpus (28/05),
+Dia do Servidor (28/10), véspera de Natal (24/12) e de Ano-Novo (31/12). Quando o decreto
+oficial sair, confirme e ajuste `entes.pmrp.facultativosLocais` em `data/feriados-2027.js`.
+Os **feriados** (20/01, 19/06, Corpus Christi, nacionais e estadual) já são definitivos.
+
+### 🩸 Doação de sangue
+No modo "Com abonadas + doação de sangue", a ferramenta sugere usar a folga de doação de
+sangue (1 a cada 3 meses) para completar pontes quando a abonada do mês já foi usada.
+Regra aplicada: no máximo 1 doação por janela de férias sugerida.
 
 ## 🚀 Como publicar online (grátis)
 

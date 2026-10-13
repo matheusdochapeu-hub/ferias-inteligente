@@ -137,6 +137,7 @@ const Motor = (function () {
       feriadosDesperdicados,
       fdsDentro,
       abonadas: [],
+      doacoes: [],
       meiosPeriodo: [],
       detalhesEmenda: []
     };
@@ -153,10 +154,12 @@ const Motor = (function () {
    * isolados nas pontas do bloco, grudando ainda mais folga.
    * Estratégia gulosa: olha até 3 dias úteis à frente/atrás e, se logo depois
    * houver folga, propõe abonar o(s) dia(s) útil(eis) de ponte. */
-  function aplicarAbonadas(res, mapa, limitePorMes) {
-    const usadasPorMes = {}; // "AAAA-MM" -> true
+  function aplicarAbonadas(res, mapa) {
+    const usadasPorMes = {}; // "AAAA-MM" -> true (abonadas: no máx. 1 por mês)
     let totalAbonadas = 0;
-    const MAX_ANO = 6;
+    let totalDoacoes = 0;
+    const MAX_ABONADAS_ANO = 6; // 6 abonadas/ano, 1 por mês
+    const MAX_DOACOES_JANELA = 1; // doação de sangue: 1 a cada 3 meses -> no máx. 1 por janela de férias
 
     function tentarPonte(direcao) {
       // direcao = +1 (depois do bloco) ou -1 (antes do bloco)
@@ -175,27 +178,38 @@ const Motor = (function () {
       // o próximo após o buffer precisa ser folga para valer a ponte
       const prox = classificar(cursor, mapa);
       const valePonte = prox.estado === "folga";
-      // facultativo/meio não gastam abonada; só dias "util" gastam
+      let doacaoUsadaNestaPonte = false;
+
       utilBuffer.forEach((u) => {
-        if (totalAbonadas >= MAX_ANO) return;
         const chaveMes = iso(u.dt).slice(0, 7);
         if (u.estado === "facultativo") {
-          res.meiosPeriodo.push({ dt: u.dt, motivo: u.motivo + " (não gasta abonada)" });
+          // ponto facultativo/ponte: não gasta abonada nem doação
+          res.meiosPeriodo.push({ dt: u.dt, motivo: u.motivo + " (não gasta folga)" });
         } else if (u.estado === "meio") {
           res.meiosPeriodo.push({ dt: u.dt, motivo: u.motivo });
         } else if (u.estado === "util" && valePonte) {
-          if (!usadasPorMes[chaveMes] && (limitePorMes ? true : true)) {
+          // Dia útil de ponte: tenta usar ABONADA (prioridade), senão DOAÇÃO de sangue.
+          if (totalAbonadas < MAX_ABONADAS_ANO && !usadasPorMes[chaveMes]) {
             usadasPorMes[chaveMes] = true;
             totalAbonadas++;
             res.abonadas.push({ dt: u.dt, motivo: "Abonada (ponte)" });
-            // estende o bloco
-            if (direcao === 1) res.blocoFim = new Date(cursor > res.blocoFim ? cursor : res.blocoFim);
-            else res.blocoInicio = new Date(cursor < res.blocoInicio ? cursor : res.blocoInicio);
+            estenderBloco(direcao, cursor);
+          } else if (totalDoacoes < MAX_DOACOES_JANELA && !doacaoUsadaNestaPonte) {
+            // Abonada do mês já usada/esgotada -> doação de sangue cobre a ponte
+            totalDoacoes++;
+            doacaoUsadaNestaPonte = true;
+            res.doacoes.push({ dt: u.dt, motivo: "Doação de sangue (ponte)" });
+            estenderBloco(direcao, cursor);
           }
         }
       });
-      // reexpande folgas após abonar
+      // reexpande folgas após usar o(s) dia(s)
       reexpandir(res, mapa);
+    }
+
+    function estenderBloco(direcao, cursor) {
+      if (direcao === 1) res.blocoFim = new Date(cursor > res.blocoFim ? cursor : res.blocoFim);
+      else res.blocoInicio = new Date(cursor < res.blocoInicio ? cursor : res.blocoInicio);
     }
 
     tentarPonte(1);
@@ -203,6 +217,7 @@ const Motor = (function () {
 
     res.totalDescanso = Math.round((res.blocoFim - res.blocoInicio) / MS_DIA) + 1;
     res.totalAbonadas = totalAbonadas;
+    res.totalDoacoes = totalDoacoes;
     return res;
   }
 
@@ -217,11 +232,14 @@ const Motor = (function () {
   /* Pontuação: queremos MAIS descanso total por dia de férias gasto.
    * Bônus por iniciar/terminar colado em feriado (emenda real). */
   function pontuar(res) {
-    const diasGastos = res.diasFerias + (res.totalAbonadas || 0);
+    // Dias efetivamente "gastos" do saldo pessoal: férias + abonadas + doações
+    const diasGastos = res.diasFerias + (res.totalAbonadas || 0) + (res.totalDoacoes || 0);
     const razao = res.totalDescanso / diasGastos;
     const bonusEmenda = (res.diasAntes + res.diasDepois) * 0.5;
     const penalidade = res.feriadosDesperdicados * 1.5; // feriado dentro das férias é "jogado fora"
-    return razao * 10 + res.totalDescanso + bonusEmenda - penalidade + (res.totalAbonadas || 0) * 0.8;
+    // bônus menor para doação do que abonada (doação tem espaçamento de 3 meses, é mais "cara")
+    return razao * 10 + res.totalDescanso + bonusEmenda - penalidade
+      + (res.totalAbonadas || 0) * 0.8 + (res.totalDoacoes || 0) * 0.5;
   }
 
   /* Gera e ordena todas as sugestões do ano. */
@@ -239,7 +257,7 @@ const Motor = (function () {
       if (addDias(d, diasFerias - 1) > fimAno) break;
 
       let res = avaliarInicio(d, diasFerias, mapa, modo);
-      if (modo === "abonadas") res = aplicarAbonadas(res, mapa, true);
+      if (modo === "abonadas") res = aplicarAbonadas(res, mapa);
       res.pontuacao = pontuar(res);
       candidatos.push(res);
     }

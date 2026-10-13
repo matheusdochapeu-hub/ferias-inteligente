@@ -68,12 +68,22 @@ window.CALENDARIOS[2027] = {
       estaduais: [
         { data: "2027-07-09", nome: "Revolução Constitucionalista (estadual SP)", tipo: "feriado" }
       ],
-      // Corpus Christi (móvel) — tradicionalmente feriado/ponto em RP:
+      // Corpus Christi (móvel) — tradicionalmente feriado em RP:
       facultativosLocais: [
         { data: "2027-05-27", nome: "Corpus Christi", tipo: "feriado" },
-        { data: "2027-10-28", nome: "Dia do Servidor Público (a confirmar)", tipo: "facultativo" }
+        // --- Pontos facultativos PROJETADOS para 2027 ---
+        // Baseados no padrão recorrente da PMRP (decretos de 2025 e 2026).
+        // ⚠️ PREVISÃO — substituir pelos dados oficiais quando o Decreto
+        //    Municipal de 2027 for publicado (previsto p/ fim de out/2026).
+        { data: "2027-02-08", nome: "Carnaval (ponto facultativo) — previsão", tipo: "facultativo" },
+        { data: "2027-02-09", nome: "Carnaval (ponto facultativo) — previsão", tipo: "facultativo" },
+        { data: "2027-02-10", nome: "Quarta-feira de Cinzas (meio período) — previsão", tipo: "meio" },
+        { data: "2027-05-28", nome: "Sexta pós-Corpus Christi (ponto facultativo) — previsão", tipo: "facultativo" },
+        { data: "2027-10-28", nome: "Dia do Servidor Público (ponto facultativo) — previsão", tipo: "facultativo" },
+        { data: "2027-12-24", nome: "Véspera de Natal (ponto facultativo) — previsão", tipo: "facultativo" },
+        { data: "2027-12-31", nome: "Véspera de Ano-Novo (ponto facultativo) — previsão", tipo: "facultativo" }
       ],
-      _observacao: "Pontos facultativos de 2027 a confirmar com o Decreto Municipal (previsto p/ fim de out/2026)."
+      _observacao: "Pontos facultativos de 2027 são PREVISÃO (padrão PMRP 2025/2026). Confirmar com o Decreto Municipal (previsto p/ fim de out/2026)."
     },
 
     /* =========================================================================

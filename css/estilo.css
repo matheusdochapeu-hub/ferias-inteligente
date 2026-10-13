@@ -181,6 +181,7 @@ h2 {
 .card div { margin: 5px 0; font-size: 0.95rem; }
 .linha-emenda { color: var(--azul-escuro); }
 .linha-abonada { color: #6a1b9a; }
+.linha-doacao { color: #b71c1c; }
 .linha-meio { color: #00695c; }
 .linha-alerta { color: #c62828; font-size: 0.88rem; }
 .muted { color: var(--cinza-texto); font-weight: 400; font-size: 0.88rem; }

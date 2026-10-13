@@ -163,6 +163,16 @@ const App = (function () {
       card.appendChild(ab);
     }
 
+    // doação de sangue sugerida
+    if (r.doacoes && r.doacoes.length) {
+      const dc = el("div", "linha-doacao");
+      const itens = r.doacoes.map((d) => H.fmtExt(d.dt)).join(" · ");
+      dc.innerHTML =
+        `🩸 <strong>Doação de sangue sugerida (${r.doacoes.length}):</strong> ${itens} ` +
+        `<span class="muted">(1 folga a cada 3 meses)</span>`;
+      card.appendChild(dc);
+    }
+
     // meios períodos / pontes facultativas aproveitadas
     if (r.meiosPeriodo && r.meiosPeriodo.length) {
       const mp = el("div", "linha-meio");
