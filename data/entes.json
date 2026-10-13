@@ -1,21 +1,45 @@
 {
-  "_comentario": "Metadados dos entes (dados puros, sem datas). As datas de feriados ficam em data/feriados/{ente}-{ano}.json. Para adicionar um novo ente, acrescente uma chave aqui e crie os arquivos de feriados correspondentes.",
+  "_comentario": "Metadados dos entes (dados puros, sem datas). As datas de feriados ficam em data/feriados/{ente}-{ano}.json. Para adicionar um novo ente, acrescente uma chave aqui e crie os arquivos de feriados correspondentes. O campo 'abonadas' parametriza as regras de faltas abonadas do ente (lido por js/motor.js).",
   "entes": {
-    "pmrp": {
-      "id": "pmrp",
-      "nome": "Prefeitura Municipal de Ribeirão Preto",
-      "nomeCurto": "PMRP",
-      "esfera": "Municipal",
-      "pagamento": "Salário no 1º dia útil do mês. Recebimento normal antes e depois das férias.",
-      "temCidades": false
-    },
     "usp": {
       "id": "usp",
       "nome": "Universidade de São Paulo (USP)",
       "nomeCurto": "USP",
       "esfera": "Estadual",
       "pagamento": "Salário no 4º dia útil do mês. Férias são pagas ADIANTADAS, no mês anterior ao gozo.",
-      "temCidades": true
+      "temCidades": true,
+      "abonadas": {
+        "maxPorMes": 1,
+        "tetoAno": 6,
+        "mesesDuplosNoAno": 0
+      }
+    },
+    "pmrp": {
+      "id": "pmrp",
+      "nome": "Prefeitura Municipal de Ribeirão Preto",
+      "nomeCurto": "PMRP",
+      "esfera": "Municipal",
+      "pagamento": "Salário no 1º dia útil do mês. Recebimento normal antes e depois das férias.",
+      "temCidades": false,
+      "abonadas": {
+        "maxPorMes": 1,
+        "tetoAno": 6,
+        "mesesDuplosNoAno": 0
+      }
+    },
+    "limeira": {
+      "id": "limeira",
+      "nome": "Prefeitura Municipal de Limeira",
+      "nomeCurto": "Limeira",
+      "esfera": "Municipal",
+      "pagamento": "Salário no 1º dia útil do mês. Recebimento normal antes e depois das férias.",
+      "temCidades": false,
+      "abonadas": {
+        "maxPorMes": 1,
+        "tetoAno": 12,
+        "mesesDuplosNoAno": 1,
+        "_nota": "Limeira (LC 41/1991 c/ PLC 8/2026): teto de 12 abonos/ano; é permitido 2 abonadas em UM único mês do ano (os demais meses: 1/mês). A cota de 'mês duplo' NÃO se aplica quando as férias são fracionadas em mais de um período."
+      }
     }
   }
 }

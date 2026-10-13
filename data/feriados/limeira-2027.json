@@ -1,0 +1,19 @@
+{
+  "ente": "limeira",
+  "ano": 2027,
+  "_observacao": "Limeira funciona como a PMRP (municipal SP). Feriado municipal CONFIRMADO: 15/09 (N. Sra. das Dores / Aniversário da Cidade, fundada em 1826). Os demais municipais fixos e os pontos facultativos/pontes de 2027 são PREVISÃO (padrão municipal) e devem ser confirmados com o Decreto Municipal de Limeira — o site oficial bloqueia acesso automático, confira manualmente em limeira.sp.gov.br.",
+  "feriadosLocais": [
+    { "data": "2027-09-15", "nome": "Nossa Senhora das Dores / Aniversário de Limeira", "tipo": "feriado" }
+  ],
+  "estaduais": [
+    { "data": "2027-07-09", "nome": "Revolução Constitucionalista (estadual SP)", "tipo": "feriado" }
+  ],
+  "facultativosLocais": [
+    { "data": "2027-05-27", "nome": "Corpus Christi", "tipo": "feriado" },
+    { "data": "2027-02-10", "nome": "Quarta-feira de Cinzas (meio período)", "tipo": "meio" },
+    { "data": "2027-05-28", "nome": "Sexta pós-Corpus Christi (ponto facultativo) — previsão", "tipo": "facultativo", "previsao": true },
+    { "data": "2027-10-28", "nome": "Dia do Servidor Público (ponto facultativo) — previsão", "tipo": "facultativo", "previsao": true },
+    { "data": "2027-12-24", "nome": "Véspera de Natal (ponto facultativo) — previsão", "tipo": "facultativo", "previsao": true },
+    { "data": "2027-12-31", "nome": "Véspera de Ano-Novo (ponto facultativo) — previsão", "tipo": "facultativo", "previsao": true }
+  ]
+}
