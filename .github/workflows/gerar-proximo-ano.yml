@@ -1,0 +1,74 @@
+name: Gerar rascunho de feriados do próximo ano
+
+# Executa todo 1º de novembro (05:00 UTC = 02:00 no horário de Brasília) e também
+# pode ser disparado manualmente pela aba "Actions". Gera os JSON de feriados do
+# ano seguinte (nacionais + móveis por fórmula; fixos replicados; facultativos
+# como "previsão") e abre um Pull Request para revisão humana.
+
+on:
+  schedule:
+    - cron: "0 5 1 11 *"   # 1 de novembro, 05:00 UTC
+  workflow_dispatch:        # permite rodar manualmente, quando quiser
+    inputs:
+      alvo:
+        description: "Ano-alvo a gerar (padrão: molde + 1)"
+        required: false
+      molde:
+        description: "Ano-molde (padrão: maior ano existente)"
+        required: false
+
+permissions:
+  contents: write          # para criar a branch/commit
+  pull-requests: write     # para abrir o PR
+
+jobs:
+  gerar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout do repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Gerar rascunho do próximo ano
+        id: gerar
+        run: |
+          ARGS=""
+          if [ -n "${{ github.event.inputs.alvo }}" ]; then ARGS="$ARGS --alvo ${{ github.event.inputs.alvo }}"; fi
+          if [ -n "${{ github.event.inputs.molde }}" ]; then ARGS="$ARGS --molde ${{ github.event.inputs.molde }}"; fi
+          echo "Rodando: node scripts/gerar-ano.js $ARGS"
+          node scripts/gerar-ano.js $ARGS | tee saida.txt
+          # descobre o ano-alvo gerado (para nome da branch / título do PR)
+          ALVO=$(ls data/feriados/nacionais-*.json | sed -E 's/.*nacionais-([0-9]{4})\.json/\1/' | sort | tail -1)
+          echo "ano=$ALVO" >> "$GITHUB_OUTPUT"
+
+      - name: Abrir Pull Request com o rascunho
+        uses: peter-evans/create-pull-request@v6
+        with:
+          branch: "rascunho-feriados-${{ steps.gerar.outputs.ano }}"
+          base: main
+          commit-message: "Rascunho automático de feriados ${{ steps.gerar.outputs.ano }}"
+          title: "🤖 Rascunho de feriados ${{ steps.gerar.outputs.ano }} (revisar previsões)"
+          labels: automacao, revisar
+          body: |
+            Rascunho **gerado automaticamente** dos feriados de **${{ steps.gerar.outputs.ano }}**.
+
+            ## ✅ O que já está correto (não precisa mexer)
+            - **Feriados nacionais fixos** (01/01, 21/04, 01/05, 07/09, 12/10, 02/11, 15/11, 20/11, 25/12).
+            - **Feriados móveis** calculados por fórmula (Páscoa → Sexta-feira Santa, Carnaval, Corpus Christi, Quarta de Cinzas).
+            - **Feriados municipais/estaduais fixos** replicados do ano anterior.
+
+            ## ⚠️ O que PRECISA de conferência humana
+            Todos os itens marcados com `"previsao": true` (e com sufixo "— previsão" no nome) são **estimativas** baseadas no padrão do ano anterior. Eles dependem de:
+            - **PMRP:** Decreto Municipal (costuma sair no fim de outubro).
+            - **USP:** Portaria/Ofício GR/CIRC do DRH.
+
+            Confira cada `"previsao": true` com o documento oficial, ajuste as datas se necessário e **remova a flag `"previsao"` e o sufixo "— previsão"** dos que forem confirmados.
+
+            > As datas de pontes derivadas de feriados móveis (ex.: sexta pós-Corpus) foram
+            > deslocadas automaticamente, mas **confirme sempre** — elas são as mais sujeitas a mudança.
+
+            Depois de revisar, basta **aprovar e mesclar** este PR.

@@ -134,10 +134,26 @@ A base de dados é desacoplada por **ente/ano** em arquivos JSON. Para adicionar
 órgãos (federal, outros municípios), acrescente uma chave em `data/entes.json` e crie os
 arquivos de feriados correspondentes.
 
-> 🤖 **Automação anual (em construção):** o objetivo é um GitHub Action que, todo 1º de
-> novembro, gera o rascunho do ano seguinte (nacionais + móveis calculados por fórmula,
-> fixos replicados, facultativos marcados como "previsão") e abre um Pull Request para
-> revisão humana. Esta refatoração para JSON é a base que viabiliza essa geração automática.
+### 🤖 Automação anual (GitHub Action)
+Todo **1º de novembro** (e sob demanda, pela aba **Actions → Run workflow**), o workflow
+`.github/workflows/gerar-proximo-ano.yml` executa `scripts/gerar-ano.js` e **abre um Pull
+Request** com o rascunho dos feriados do ano seguinte:
+
+- **Nacionais fixos** replicados; **móveis** calculados por fórmula (`js/moveis.js`);
+  **municipais/estaduais fixos** replicados do ano anterior.
+- **Facultativos/pontes** marcados com `"previsao": true` (e sufixo "— previsão") — dependem
+  de Decreto (PMRP) / Portaria GR/CIRC (USP) e exigem **conferência humana**.
+- Datas derivadas de móveis (ex.: sexta pós-Corpus) são deslocadas automaticamente, mas
+  devem ser confirmadas.
+
+Para rodar o gerador localmente:
+```bash
+node scripts/gerar-ano.js --alvo 2028 --molde 2027   # ou sem args: usa o maior ano existente
+```
+
+> ⚙️ **Pré-requisito único (uma vez):** em **Settings → Actions → General → Workflow
+> permissions**, marque **"Allow GitHub Actions to create and approve pull requests"** —
+> sem isso o Action não consegue abrir o PR.
 
 ### 📐 Feriados móveis calculados por fórmula (`js/moveis.js`)
 Os feriados que dependem da Páscoa são calculados **localmente, sem API**, pelo algoritmo de
