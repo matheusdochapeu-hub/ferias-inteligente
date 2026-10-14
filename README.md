@@ -51,6 +51,8 @@ js/motor.js                       → motor de cálculo (independente da interfa
 js/app.js                         → controle de telas e renderização
 js/dados.js                       → carregador: busca os JSON de feriados (fetch) e inicia o App
 js/feedback.js                    → modal "Fale com o desenvolvedor" (Google Forms embutido)
+js/pix.js                         → modal de doação via Pix (QR Code + copiar chave)
+js/vendor/qrcode.min.js           → gerador de QR Code (davidshimjs/qrcodejs, MIT, vendorizado)
                                     (dias especiais / banco de horas / TRE vivem em js/motor.js + js/app.js)
 js/contador.js                    → contador de acessos (painel visível só p/ o dev)
 data/entes.json                   → metadados dos entes (nome, esfera, pagamento) — sem datas
@@ -247,3 +249,14 @@ Regras aplicadas pelo motor (valem para **todos os entes**, atuais e futuros):
   consumir abonadas/doação.
 
 No fracionamento (2º período), o saldo restante = informado − usados no 1º período.
+
+## 💚 Doação via Pix
+
+Botão **"💚 Gostou do app? Manda um Pix!"** na tela inicial e na tela final. Abre um modal com:
+- o **QR Code** do Pix, gerado **no próprio app** a partir do código "copia e cola"
+  (biblioteca `qrcode.min.js`, MIT, vendorizada em `js/vendor/` — funciona offline, sem CDN);
+- um botão **"Copiar chave Pix"** (com fallback para navegadores antigos).
+
+A chave/código Pix fica em `PIX_COPIA_COLA` no topo de `js/pix.js` (payload EMV completo, com
+CRC16 validado). Para trocar: substitua o código "copia e cola" lá. O QR e o botão não aparecem
+na impressão/PDF.
