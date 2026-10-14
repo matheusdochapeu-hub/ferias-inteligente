@@ -50,6 +50,7 @@ css/estilo.css                    → estilos
 js/motor.js                       → motor de cálculo (independente da interface)
 js/app.js                         → controle de telas e renderização
 js/dados.js                       → carregador: busca os JSON de feriados (fetch) e inicia o App
+js/feedback.js                    → modal "Fale com o desenvolvedor" (Google Forms embutido)
 js/contador.js                    → contador de acessos (painel visível só p/ o dev)
 data/entes.json                   → metadados dos entes (nome, esfera, pagamento) — sem datas
 data/feriados/nacionais-2027.json → feriados nacionais + facultativos nacionais
@@ -211,3 +212,16 @@ Moveis.entradasParaJSON(2028); // entradas já no formato dos JSON de feriados
 Derivadas a partir do Domingo de Páscoa: Carnaval (−48/−47 dias), Quarta de Cinzas (−46),
 Sexta-feira Santa (−2), Corpus Christi (+60). Validado contra as datas oficiais de 2024–2035
 e contra os dados de 2027 já presentes no app.
+
+## 💬 Fale com o desenvolvedor (feedback)
+
+Há um botão **"💬 Fale com o desenvolvedor"** na tela inicial e na tela final. Ele abre um
+modal com um **Google Forms embutido** (sugestões, críticas, dúvidas). As respostas caem na
+conta Google do responsável (aba *Respostas* do formulário, com opção de planilha). Não há
+backend nem e-mail exposto no código.
+
+- O formulário é carregado **sob demanda** (só quando o modal abre), via `<iframe>`.
+- Se o `iframe` não carregar (política de incorporação, rede), o modal mostra um link de
+  **fallback** para abrir o formulário em nova aba.
+- Para trocar o formulário: altere `FORM_URL` em `js/feedback.js` e o `href` de fallback em
+  `index.html` (procure por `forms.gle`).

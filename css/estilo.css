@@ -492,3 +492,90 @@ h2 {
 @media print {
   #dev-contador { display: none !important; }
 }
+
+/* ---------- Botão "Fale com o desenvolvedor" ---------- */
+.btn-feedback {
+  display: inline-block;
+  margin: 18px auto 0;
+  background: #fff;
+  border: 2px solid var(--azul);
+  color: var(--azul-escuro);
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--sombra);
+  transition: transform 0.12s, background 0.12s;
+}
+#tela-orgao .btn-feedback { display: block; width: 100%; max-width: 360px; margin-left: auto; margin-right: auto; }
+.btn-feedback:hover { transform: translateY(-2px); background: #f0f7ff; }
+
+/* ---------- Modal de feedback ---------- */
+.feedback-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.feedback-modal[hidden] { display: none; }
+.feedback-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(13, 27, 42, 0.55);
+  backdrop-filter: blur(2px);
+}
+.feedback-caixa {
+  position: relative;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  width: 100%;
+  max-width: 640px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.feedback-cab {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid #e0e6ec;
+}
+.feedback-cab h2 { margin: 0; font-size: 1.15rem; color: var(--azul-escuro); }
+.feedback-fechar {
+  background: #eef3f8;
+  border: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  color: var(--cinza-texto);
+}
+.feedback-fechar:hover { background: #dde7f0; color: var(--azul-escuro); }
+.feedback-ajuda { margin: 12px 18px 0; color: var(--cinza-texto); font-size: 0.92rem; }
+.feedback-corpo {
+  flex: 1;
+  overflow: auto;
+  padding: 12px 18px;
+  min-height: 320px;
+}
+.feedback-iframe { width: 100%; height: 70vh; min-height: 420px; border: 0; }
+.feedback-fallback {
+  margin: 0;
+  padding: 10px 18px 16px;
+  font-size: 0.85rem;
+  color: var(--cinza-texto);
+  text-align: center;
+}
+.feedback-fallback a { color: var(--azul); font-weight: 600; }
+
+@media print {
+  .btn-feedback, .feedback-modal { display: none !important; }
+}
