@@ -639,3 +639,49 @@ h2 {
 
 /* linha descritiva de folgas banco/TRE nos cards */
 .linha-especial { color: #00695c; }
+
+/* ---------- Botão e modal de doação via Pix ---------- */
+.btn-pix {
+  display: inline-block;
+  margin: 10px auto 0;
+  background: var(--verde);
+  border: 2px solid var(--verde);
+  color: #fff;
+  border-radius: var(--radius);
+  padding: 12px 20px;
+  font-size: 0.98rem;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: var(--sombra);
+  transition: transform 0.12s, background 0.12s;
+}
+.btn-pix:hover { transform: translateY(-2px); background: #1b5e20; }
+#tela-orgao .btn-pix { display: block; width: 100%; max-width: 360px; margin-left: auto; margin-right: auto; }
+
+.pix-corpo { text-align: center; padding: 8px 18px 18px; }
+.pix-qr {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e0e6ec;
+  border-radius: 12px;
+  min-width: 180px;
+  min-height: 180px;
+}
+.pix-qr img, .pix-qr canvas, .pix-qr svg { display: block; }
+.pix-qr-erro { color: var(--cinza-texto); font-size: 0.9rem; margin: 0; }
+.pix-recebedor { margin: 12px 0; color: var(--cinza-texto); font-size: 0.9rem; }
+.pix-copiar { background: var(--verde); }
+.pix-copiar:hover { background: #1b5e20; }
+.pix-copiado {
+  margin: 10px 0 0;
+  color: var(--verde);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+@media print {
+  .btn-pix, #pix-modal { display: none !important; }
+}

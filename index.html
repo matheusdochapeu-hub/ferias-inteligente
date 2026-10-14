@@ -29,6 +29,7 @@
         </button>
       </div>
       <button type="button" class="btn-feedback" data-abrir-feedback>💬 Fale com o desenvolvedor</button>
+      <button type="button" class="btn-pix" data-abrir-pix>💚 Gostou do app? Manda um Pix!</button>
     </section>
 
     <!-- TELA 2: CIDADE (USP) -->
@@ -168,6 +169,7 @@
 
       <div class="nao-imprimir" style="text-align:center; margin-top:18px">
         <button type="button" class="btn-feedback" data-abrir-feedback>💬 Fale com o desenvolvedor</button>
+        <button type="button" class="btn-pix" data-abrir-pix>💚 Gostou do app? Manda um Pix!</button>
       </div>
     </section>
   </main>
@@ -196,6 +198,26 @@
     </div>
   </div>
 
+  <!-- Modal: doação via Pix -->
+  <div id="pix-modal" class="feedback-modal" hidden role="dialog" aria-modal="true" aria-labelledby="pix-titulo">
+    <div class="feedback-backdrop" data-fechar-pix></div>
+    <div class="feedback-caixa pix-caixa" role="document">
+      <div class="feedback-cab">
+        <h2 id="pix-titulo">💚 Manda um Pix!</h2>
+        <button type="button" class="feedback-fechar" aria-label="Fechar" data-fechar-pix>✕</button>
+      </div>
+      <p class="feedback-ajuda">
+        Este app é gratuito e feito com carinho. Se ele te ajudou, considere apoiar com um Pix de qualquer valor — é opcional e muito bem-vindo! 💚
+      </p>
+      <div class="pix-corpo">
+        <div id="pix-qr" class="pix-qr" aria-label="QR Code para doação via Pix"></div>
+        <p class="pix-recebedor">Recebedor: <strong>Matheus</strong> · São Paulo</p>
+        <button type="button" id="pix-copiar" class="btn-escolher pix-copiar">📋 Copiar chave Pix</button>
+        <p id="pix-copiado" class="pix-copiado" hidden>✅ Chave copiada! Cole no seu app do banco.</p>
+      </div>
+    </div>
+  </div>
+
   <!-- Lógica -->
   <script src="js/motor.js"></script>
   <script src="js/app.js"></script>
@@ -205,5 +227,8 @@
   <script src="js/contador.js"></script>
   <!-- "Fale com o desenvolvedor" (modal com formulário do Google) -->
   <script src="js/feedback.js"></script>
+  <!-- Doação via Pix: gerador de QR (MIT, vendorizado) + modal -->
+  <script src="js/vendor/qrcode.min.js"></script>
+  <script src="js/pix.js"></script>
 </body>
 </html>
