@@ -239,9 +239,12 @@ const Motor = (function () {
       const mesKey = iso(dia).slice(0, 7);
       const pode = cfg.usarAbonadas && podeAbonarNoMes(mesKey);
       if (pode) {
-        if (pode === "duplo") mesesDuplosRestantes--; // consome a cota de mês duplo
+        const usouDuplo = pode === "duplo";
+        if (usouDuplo) mesesDuplosRestantes--; // consome a cota de mês duplo
         abonadasPorMes[mesKey] = abonadasNoMes(mesKey) + 1;
-        res.abonadas.push({ dt: new Date(dia), motivo: "Abonada (ponte)" });
+        // _duplo marca que esta abonada consumiu a cota de mês duplo, para que
+        // desfazer() possa devolvê-la caso a compra da ponte seja revertida.
+        res.abonadas.push({ dt: new Date(dia), motivo: "Abonada (ponte)", _duplo: usouDuplo });
         return "abonada";
       }
       // doação: 1 por período e respeitando 3 meses de distância das do plano
@@ -314,6 +317,9 @@ const Motor = (function () {
         if (tipo === "abonada") {
           const mesKey = iso(dia).slice(0, 7);
           abonadasPorMes[mesKey] = Math.max(0, abonadasNoMes(mesKey) - 1);
+          // se esta abonada havia consumido a cota de mês duplo, devolve a cota
+          const removida = res.abonadas.find((a) => +a.dt === +dia);
+          if (removida && removida._duplo) mesesDuplosRestantes++;
           res.abonadas = res.abonadas.filter((a) => +a.dt !== +dia);
         } else if (tipo === "doacao") {
           res.doacoes = res.doacoes.filter((a) => +a.dt !== +dia);
@@ -518,15 +524,20 @@ const Motor = (function () {
     const inicioAno = new Date(ano, 0, 1);
     const fimAno = new Date(ano, 11, 31);
     const candidatos = [];
-    const r = restricoes || {};
+    // Trabalha sobre uma CÓPIA das restrições para não mutar o objeto do chamador.
+    const r = Object.assign({}, restricoes || {});
 
     // injeta as REGRAS DE ABONADA do ente (de data/entes.json via CALENDARIOS)
     // para que avaliarInicio/aplicarRecursos as respeitem. Fallback conservador.
     const enteObj = window.CALENDARIOS[ano].entes[enteId];
     r.regrasAbonada = (enteObj && enteObj.abonadas) || { maxPorMes: 1, tetoAno: 6, mesesDuplosNoAno: 0 };
-    // "fracionado" = este cálculo é de um 2º período (há restrições de outro
-    // período). A cota de "mês duplo" (Limeira) NÃO vale quando fracionado.
-    r.fracionado = !!(r.diasBloqueados || r.mesesAbonadaUsados || r.doacoesUsadas);
+    // "fracionado" = este cálculo é de um 2º período. A cota de "mês duplo"
+    // (Limeira) NÃO vale quando fracionado. Preferimos a flag explícita passada
+    // pelo chamador; se ausente, inferimos pela presença de restrições de plano
+    // (compatibilidade com o fluxo atual do app.js).
+    r.fracionado = (typeof r.fracionado === "boolean")
+      ? r.fracionado
+      : !!(r.diasBloqueados || r.mesesAbonadaUsados || r.doacoesUsadas);
 
     for (let d = new Date(inicioAno); d <= fimAno; d = addDias(d, 1)) {
       const c = classificar(d, mapa);
