@@ -28,6 +28,7 @@
           🏛️ Servidor da Prefeitura Municipal de Limeira
         </button>
       </div>
+      <button type="button" class="btn-feedback" data-abrir-feedback>💬 Fale com o desenvolvedor</button>
     </section>
 
     <!-- TELA 2: CIDADE (USP) -->
@@ -137,6 +138,10 @@
       <div id="final-instrucoes" class="info-box"></div>
 
       <p class="rodape-final">Documento gerado pelo app Férias Inteligente · confira sempre o calendário oficial do seu órgão.</p>
+
+      <div class="nao-imprimir" style="text-align:center; margin-top:18px">
+        <button type="button" class="btn-feedback" data-abrir-feedback>💬 Fale com o desenvolvedor</button>
+      </div>
     </section>
   </main>
 
@@ -146,6 +151,24 @@
     <p class="credito">Feito e pensado por MRR, FSS e TP</p>
   </footer>
 
+  <!-- Modal: Fale com o desenvolvedor (formulário do Google embutido) -->
+  <div id="feedback-modal" class="feedback-modal" hidden role="dialog" aria-modal="true" aria-labelledby="feedback-titulo">
+    <div class="feedback-backdrop" data-fechar-feedback></div>
+    <div class="feedback-caixa" role="document">
+      <div class="feedback-cab">
+        <h2 id="feedback-titulo">💬 Fale com o desenvolvedor</h2>
+        <button type="button" class="feedback-fechar" aria-label="Fechar" data-fechar-feedback>✕</button>
+      </div>
+      <p class="feedback-ajuda">Sugestões, críticas e dúvidas são muito bem-vindas! Preencha abaixo:</p>
+      <div id="feedback-corpo" class="feedback-corpo">
+        <!-- o iframe é inserido por JS só quando o modal abre (carregamento sob demanda) -->
+      </div>
+      <p class="feedback-fallback">
+        Não carregou? <a href="https://forms.gle/DEXgWCQFVf4JjqoL6" target="_blank" rel="noopener">Abrir o formulário em uma nova aba</a>.
+      </p>
+    </div>
+  </div>
+
   <!-- Lógica -->
   <script src="js/motor.js"></script>
   <script src="js/app.js"></script>
@@ -153,5 +176,7 @@
   <script src="js/dados.js"></script>
   <!-- Contador de acessos (painel visível só para o desenvolvedor) -->
   <script src="js/contador.js"></script>
+  <!-- "Fale com o desenvolvedor" (modal com formulário do Google) -->
+  <script src="js/feedback.js"></script>
 </body>
 </html>
