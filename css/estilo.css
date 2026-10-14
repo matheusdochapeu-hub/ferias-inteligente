@@ -304,6 +304,7 @@ h2 {
 .mini-dia.meio      { background: #d7ccc8; color: #4e342e; font-weight: 700; }
 .mini-dia.doacao    { background: #ffcdd2; color: #b71c1c; font-weight: 700; }
 .mini-dia.abonada   { background: #e1bee7; color: #4a148c; font-weight: 700; }
+.mini-dia.especial  { background: #b2dfdb; color: #00695c; font-weight: 700; }
 .mini-dia.ferias    { background: #ffd54f; color: #5d4037; font-weight: 700; }
 
 /* legenda */
@@ -329,6 +330,7 @@ h2 {
 .lg-feriado { background: #c8e6c9; }
 .lg-abonada { background: #e1bee7; }
 .lg-doacao  { background: #ffcdd2; }
+.lg-especial { background: #b2dfdb; }
 .lg-ponte   { background: #b3e5fc; }
 .lg-meio    { background: #d7ccc8; }
 .lg-fds     { background: #e8edf2; }
@@ -579,3 +581,61 @@ h2 {
 @media print {
   .btn-feedback, .feedback-modal { display: none !important; }
 }
+
+/* ---------- Banco de horas / folgas TRE (tela de dias) ---------- */
+.bloco-especiais {
+  margin: 18px 0 6px;
+  padding: 16px;
+  background: #e0f2f1;                 /* teal clarinho, combina com .especial */
+  border: 1px solid #b2dfdb;
+  border-radius: var(--radius);
+}
+.especiais-pergunta {
+  text-align: center;
+  margin: 0 0 12px;
+  color: var(--azul-escuro);
+  font-weight: 600;
+}
+.especiais-opt.sel {
+  background: var(--azul);
+  color: #fff;
+  border-color: var(--azul-escuro);
+}
+.especiais-dica { margin-top: 10px; }
+.btn-dias-especial { border: 2px dashed #80cbc4; }
+
+/* Stepper − valor + (sem lista suspensa) */
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin: 10px 0 4px;
+}
+.stepper-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: none;
+  background: var(--azul);
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow: var(--sombra);
+  transition: transform 0.12s, background 0.12s;
+}
+.stepper-btn:hover { transform: translateY(-2px); background: var(--azul-escuro); }
+.stepper-btn:active { transform: translateY(0); }
+.stepper-valor {
+  min-width: 56px;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--azul-escuro);
+}
+.stepper-unidade { color: var(--cinza-texto); font-size: 0.95rem; }
+
+/* linha descritiva de folgas banco/TRE nos cards */
+.linha-especial { color: #00695c; }

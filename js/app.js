@@ -16,7 +16,9 @@ const App = (function () {
     modo: "corridas", // modo de cálculo atual
     plano: [],        // períodos já escolhidos: [{ sugestao, modo, dias }]
     etapa: 1,         // 1 = primeira seleção, 2 = segunda (dias restantes)
-    mesesPreferidos: [] // meses (0-11) p/ filtrar o INÍCIO das férias; vazio = todos
+    mesesPreferidos: [], // meses (0-11) p/ filtrar o INÍCIO das férias; vazio = todos
+    usaEspeciais: false, // usuário indicou que tem banco de horas / folgas TRE?
+    diasEspeciais: 0    // saldo informado de dias especiais a usar
   };
 
   const TOTAL_FERIAS = 30; // direito total de dias no ano
@@ -117,6 +119,45 @@ const App = (function () {
       })
     );
 
+    // ---- Banco de horas / folgas TRE (passo opcional na tela de dias) ----
+    const espNao = $("#especiais-nao"), espSim = $("#especiais-sim");
+    const espPainel = $("#especiais-painel"), espValor = $("#especiais-valor");
+    function marcarEspOpt(ativo) {
+      if (espSim) espSim.classList.toggle("sel", ativo);
+      if (espNao) espNao.classList.toggle("sel", !ativo);
+      if (espPainel) espPainel.style.display = ativo ? "" : "none";
+    }
+    function atualizaValorEsp() {
+      if (espValor) espValor.textContent = String(estado.diasEspeciais);
+      // o botão "0 dias (só folgas)" só faz sentido com saldo >= 1
+      const btnSo = document.querySelector(".btn-dias-especial");
+      if (btnSo) btnSo.style.display = estado.diasEspeciais > 0 ? "" : "none";
+    }
+    if (espNao) espNao.addEventListener("click", () => {
+      estado.usaEspeciais = false;
+      estado.diasEspeciais = 0;
+      marcarEspOpt(false);
+      atualizaValorEsp();
+    });
+    if (espSim) espSim.addEventListener("click", () => {
+      estado.usaEspeciais = true;
+      if (estado.diasEspeciais < 1) estado.diasEspeciais = 1; // começa em 1 ao ativar
+      marcarEspOpt(true);
+      atualizaValorEsp();
+    });
+    const espMenos = $("#especiais-menos"), espMais = $("#especiais-mais");
+    if (espMenos) espMenos.addEventListener("click", () => {
+      estado.diasEspeciais = Math.max(0, estado.diasEspeciais - 1);
+      estado.usaEspeciais = estado.diasEspeciais > 0;
+      if (!estado.usaEspeciais) marcarEspOpt(false);
+      atualizaValorEsp();
+    });
+    if (espMais) espMais.addEventListener("click", () => {
+      estado.diasEspeciais = Math.min(60, estado.diasEspeciais + 1); // teto de segurança da UI
+      estado.usaEspeciais = true;
+      atualizaValorEsp();
+    });
+
     // imprimir / salvar o plano em PDF (usa a caixa de impressão do navegador)
     const pdf = $("#btn-pdf");
     if (pdf) pdf.addEventListener("click", () => window.print());
@@ -142,6 +183,8 @@ const App = (function () {
     estado.plano = [];
     estado.etapa = 1;
     estado.mesesPreferidos = [];
+    estado.usaEspeciais = false;
+    estado.diasEspeciais = 0;
   }
 
   /* ---------- Tela cidade (USP) ---------- */
@@ -252,6 +295,7 @@ const App = (function () {
     const diasBloqueados = new Set();
     const mesesAbonadaUsados = new Set();
     const doacoesUsadas = [];
+    let especiaisUsados = 0;
     estado.plano.forEach(({ sugestao }) => {
       // bloqueia o bloco inteiro (regra B)
       for (let d = new Date(sugestao.blocoInicio); d <= sugestao.blocoFim; d = H.addDias(d, 1)) {
@@ -259,10 +303,18 @@ const App = (function () {
       }
       (sugestao.abonadas || []).forEach((a) => mesesAbonadaUsados.add(H.iso(a.dt).slice(0, 7)));
       (sugestao.doacoes || []).forEach((dc) => doacoesUsadas.push(new Date(dc.dt)));
+      especiaisUsados += (sugestao.diasEspeciais || []).length;
     });
+    // saldo de dias especiais restante para o 2º período (nunca negativo)
+    const saldoEspeciais = estado.usaEspeciais
+      ? Math.max(0, estado.diasEspeciais - especiaisUsados)
+      : 0;
     // fracionado = true: estamos montando o 2º período. Sinaliza explicitamente
     // ao motor para desligar a cota de "mês duplo" (regra de Limeira).
-    return { diasBloqueados, mesesAbonadaUsados, doacoesUsadas, fracionado: true };
+    return {
+      diasBloqueados, mesesAbonadaUsados, doacoesUsadas, fracionado: true,
+      diasEspeciaisDisponiveis: saldoEspeciais
+    };
   }
 
   /* ---------- Tela resultados ---------- */
@@ -312,7 +364,9 @@ const App = (function () {
       avisoPlano.style.display = "none";
     }
 
-    const restr = estado.etapa === 2 ? restricoesDoPlano() : null;
+    const restr = estado.etapa === 2
+      ? restricoesDoPlano()
+      : { diasEspeciaisDisponiveis: estado.usaEspeciais ? estado.diasEspeciais : 0 };
     let lista = Motor.calcular(estado.ente, estado.cidade, estado.dias, estado.modo, restr);
     const totalAntesFiltroMes = lista.length;
 
@@ -393,9 +447,15 @@ const App = (function () {
     const frag = document.createDocumentFragment();
 
     const periodo = el("div", "linha-periodo");
-    periodo.innerHTML =
-      `🏖️ <strong>Férias:</strong> ${H.fmtExt(r.inicioFerias)} → ${H.fmtExt(r.fimFerias)} ` +
-      `<span class="muted">(${r.diasFerias} dias)</span>`;
+    if (r.semFerias) {
+      periodo.innerHTML =
+        `🏖️ <strong>Sem gastar férias</strong> ` +
+        `<span class="muted">(folga montada só com banco de horas / TRE)</span>`;
+    } else {
+      periodo.innerHTML =
+        `🏖️ <strong>Férias:</strong> ${H.fmtExt(r.inicioFerias)} → ${H.fmtExt(r.fimFerias)} ` +
+        `<span class="muted">(${r.diasFerias} dias)</span>`;
+    }
     frag.appendChild(periodo);
 
     const bloco = el("div", "linha-bloco");
@@ -408,6 +468,13 @@ const App = (function () {
       em.innerHTML = `🔗 <strong>Emendas aproveitadas:</strong> ` +
         r.detalhesEmenda.map((e) => `${H.fmt(e.dt)} (${e.motivo})`).join(" · ");
       frag.appendChild(em);
+    }
+    if (r.diasEspeciais && r.diasEspeciais.length) {
+      const de = el("div", "linha-especial");
+      de.innerHTML = `🏦 <strong>Folgas (banco de horas / TRE) usadas (${r.diasEspeciais.length}):</strong> ` +
+        r.diasEspeciais.map((e) => H.fmtExt(e.dt)).join(" · ") +
+        ` <span class="muted">(abatem só dias úteis)</span>`;
+      frag.appendChild(de);
     }
     if (r.abonadas && r.abonadas.length) {
       const ab = el("div", "linha-abonada");
@@ -496,6 +563,7 @@ const App = (function () {
     const totalDescanso = estado.plano.reduce((s, p) => s + p.sugestao.totalDescanso, 0);
     const totalAbon = estado.plano.reduce((s, p) => s + (p.sugestao.abonadas || []).length, 0);
     const totalDoa = estado.plano.reduce((s, p) => s + (p.sugestao.doacoes || []).length, 0);
+    const totalEsp = estado.plano.reduce((s, p) => s + (p.sugestao.diasEspeciais || []).length, 0);
 
     $("#final-cabecalho").innerHTML =
       `<strong>${ente.nome}</strong>` +
@@ -509,7 +577,8 @@ const App = (function () {
       ` <small>(de ${TOTAL_FERIAS})</small></div>` +
       `<div class="final-num"><span>${totalDescanso}</span>dias de descanso no total</div>` +
       `<div class="final-num"><span>${totalAbon}</span>abonadas</div>` +
-      `<div class="final-num"><span>${totalDoa}</span>doações de sangue</div>`;
+      `<div class="final-num"><span>${totalDoa}</span>doações de sangue</div>` +
+      (totalEsp > 0 ? `<div class="final-num"><span>${totalEsp}</span>folgas banco/TRE</div>` : "");
 
     const sobra = TOTAL_FERIAS - totalDias;
     const ehUsp = estado.ente === "usp";
@@ -554,16 +623,24 @@ const App = (function () {
         todasDoa.map((d) => H.fmtExt(d)).join(" · ") +
         ` — respeite o intervalo de 3 meses entre doações.</p>`;
     }
-    if (!html) html = `<p>Você não usou abonadas nem doação de sangue neste plano (apenas emendas de feriados).</p>`;
+    const todasEsp = estado.plano.flatMap((p) => (p.sugestao.diasEspeciais || []).map((e) => e.dt));
+    if (todasEsp.length) {
+      html += `<p>🏦 <strong>Folgas (banco de horas / TRE) a solicitar (${todasEsp.length}):</strong> ` +
+        todasEsp.map((d) => H.fmtExt(d)).join(" · ") +
+        ` — confirme o saldo disponível com o seu setor de pessoal.</p>`;
+    }
+    if (!html) html = `<p>Você não usou abonadas, doação de sangue nem folgas banco/TRE neste plano (apenas emendas de feriados).</p>`;
     instr.innerHTML = html;
   }
 
   /* ---------- Minicalendário (recebe ente/cidade p/ funcionar em qualquer tela) ---------- */
   function montarCalendarioVisual(r, ente, cidade) {
     const mapa = Motor.montarCalendario(ente, cidade);
-    const setFerias = intervaloSet(r.inicioFerias, r.fimFerias);
+    // No modo "só folgas" não há dias de férias para pintar.
+    const setFerias = r.semFerias ? new Set() : intervaloSet(r.inicioFerias, r.fimFerias);
     const setAbonada = new Set((r.abonadas || []).map((a) => H.iso(a.dt)));
     const setDoacao = new Set((r.doacoes || []).map((a) => H.iso(a.dt)));
+    const setEspecial = new Set((r.diasEspeciais || []).map((a) => H.iso(a.dt)));
     const setMeio = new Set((r.meiosPeriodo || []).map((a) => H.iso(a.dt)));
 
     const ini = r.blocoInicio, fim = r.blocoFim;
@@ -587,9 +664,9 @@ const App = (function () {
       for (let dia = 1; dia <= diasNoMes; dia++) {
         const dt = new Date(ano, mes, dia);
         const k = H.iso(dt);
-        const classe = classeDoDia(dt, k, { mapa, setFerias, setAbonada, setDoacao, setMeio, ini, fim });
+        const classe = classeDoDia(dt, k, { mapa, setFerias, setAbonada, setDoacao, setEspecial, setMeio, ini, fim });
         const cel = el("span", "mini-dia " + classe, String(dia));
-        const titulo = tituloDoDia(dt, k, mapa, setFerias, setAbonada, setDoacao);
+        const titulo = tituloDoDia(dt, k, mapa, setFerias, setAbonada, setDoacao, setEspecial);
         if (titulo) cel.title = titulo;
         grid.appendChild(cel);
       }
@@ -603,6 +680,7 @@ const App = (function () {
       `<span class="lg lg-feriado"></span>Feriado` +
       `<span class="lg lg-abonada"></span>Abonada` +
       `<span class="lg lg-doacao"></span>Doação` +
+      `<span class="lg lg-especial"></span>Banco/TRE` +
       `<span class="lg lg-ponte"></span>Ponte/facult.` +
       `<span class="lg lg-meio"></span>Meio período` +
       `<span class="lg lg-fds"></span>Fim de semana`;
@@ -624,6 +702,7 @@ const App = (function () {
       return H.ehFimDeSemana(dt) ? "fora fds-fora" : "fora";
     }
     if (ctx.setFerias.has(k)) return "ferias";
+    if (ctx.setEspecial && ctx.setEspecial.has(k)) return "especial";
     if (ctx.setAbonada.has(k)) return "abonada";
     if (ctx.setDoacao.has(k)) return "doacao";
     const c = Motor.classificar(dt, ctx.mapa);
@@ -634,8 +713,9 @@ const App = (function () {
     return "util-dentro";
   }
 
-  function tituloDoDia(dt, k, mapa, setFerias, setAbonada, setDoacao) {
+  function tituloDoDia(dt, k, mapa, setFerias, setAbonada, setDoacao, setEspecial) {
     if (setFerias.has(k)) return "Férias";
+    if (setEspecial && setEspecial.has(k)) return "Folga (banco de horas / TRE)";
     if (setAbonada.has(k)) return "Abonada";
     if (setDoacao.has(k)) return "Doação de sangue";
     const c = Motor.classificar(dt, mapa);
