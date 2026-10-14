@@ -260,7 +260,9 @@ const App = (function () {
       (sugestao.abonadas || []).forEach((a) => mesesAbonadaUsados.add(H.iso(a.dt).slice(0, 7)));
       (sugestao.doacoes || []).forEach((dc) => doacoesUsadas.push(new Date(dc.dt)));
     });
-    return { diasBloqueados, mesesAbonadaUsados, doacoesUsadas };
+    // fracionado = true: estamos montando o 2º período. Sinaliza explicitamente
+    // ao motor para desligar a cota de "mês duplo" (regra de Limeira).
+    return { diasBloqueados, mesesAbonadaUsados, doacoesUsadas, fracionado: true };
   }
 
   /* ---------- Tela resultados ---------- */
@@ -411,7 +413,7 @@ const App = (function () {
       const ab = el("div", "linha-abonada");
       ab.innerHTML = `✨ <strong>Abonadas sugeridas (${r.abonadas.length}):</strong> ` +
         r.abonadas.map((a) => H.fmtExt(a.dt)).join(" · ") +
-        ` <span class="muted">(máx. 6/ano, 1 por mês)</span>`;
+        ` <span class="muted">(${regraAbonadasTexto()})</span>`;
       frag.appendChild(ab);
     }
     if (r.doacoes && r.doacoes.length) {
@@ -545,7 +547,7 @@ const App = (function () {
     if (todasAbon.length) {
       html += `<p>✨ <strong>Abonadas a solicitar (${todasAbon.length}):</strong> ` +
         todasAbon.map((d) => H.fmtExt(d)).join(" · ") +
-        ` — lembre-se: no máximo 1 por mês e 6 no ano.</p>`;
+        ` — lembre-se: ${regraAbonadasTexto()}.</p>`;
     }
     if (todasDoa.length) {
       html += `<p>🩸 <strong>Doações de sangue (${todasDoa.length}):</strong> ` +
@@ -639,6 +641,19 @@ const App = (function () {
     const c = Motor.classificar(dt, mapa);
     if (c.motivo && c.motivo !== "Dia útil" && c.motivo !== "Fim de semana") return c.motivo;
     return "";
+  }
+
+  /* Texto da regra de abonadas do ente ativo, derivado de ente.abonadas
+   * (ex.: "máx. 6/ano, 1 por mês" ou, para Limeira, "máx. 12/ano, 1 por mês
+   * (2 em um único mês)"). */
+  function regraAbonadasTexto() {
+    const ente = window.CALENDARIOS[window.ANO_ATIVO].entes[estado.ente];
+    const a = (ente && ente.abonadas) || { maxPorMes: 1, tetoAno: 6, mesesDuplosNoAno: 0 };
+    let txt = `máx. ${a.tetoAno}/ano, ${a.maxPorMes} por mês`;
+    if (a.mesesDuplosNoAno > 0) {
+      txt += ` (${a.maxPorMes + 1} em ${a.mesesDuplosNoAno === 1 ? "um único mês" : a.mesesDuplosNoAno + " meses"} do ano, exceto se as férias forem divididas)`;
+    }
+    return txt;
   }
 
   function nomeMesExtenso(m) {
