@@ -109,6 +109,9 @@ const Motor = (function () {
   }
 
   /* Config de recursos por modo. */
+  /* Config de recursos por modo. usarDiasEspeciais é controlado SEPARADAMENTE
+   * (ligado quando o usuário informa banco de horas / folgas TRE disponíveis),
+   * então vale para QUALQUER modo — por isso não aparece aqui. */
   function configModo(modo) {
     switch (modo) {
       case "corridas":            return { usarAbonadas: false, usarDoacao: false };
@@ -123,28 +126,52 @@ const Motor = (function () {
    * Expande o bloco de descanso incorporando folgas E pontos facultativos
    * colados nas pontas (facultativo não custa nada). */
   function avaliarInicio(inicio, diasFerias, mapa, modo, restricoes) {
+    const r = restricoes || {};
     const cfg = configModo(modo);
+    // Dias especiais (banco de horas / folgas TRE): só entram se o usuário
+    // informou um saldo disponível. Têm prioridade sobre abonada/doação.
+    cfg.usarDiasEspeciais = (r.diasEspeciaisDisponiveis || 0) > 0;
+
+    // Caso "só folgas especiais" (0 dias de férias): não há bloco de férias; a
+    // folga é montada SOMENTE com dias especiais colados a FDS/feriados. Nesse
+    // modo, abonada e doação NÃO são usadas (requisito: montar só com banco/TRE).
+    const semFerias = diasFerias <= 0;
+    if (semFerias) { cfg.usarAbonadas = false; cfg.usarDoacao = false; }
+
     const fimFerias = addDias(inicio, diasFerias - 1);
 
     const res = {
       modo,
       inicioFerias: new Date(inicio),
-      fimFerias: new Date(fimFerias),
-      diasFerias,
+      fimFerias: semFerias ? new Date(inicio) : new Date(fimFerias),
+      diasFerias: Math.max(0, diasFerias),
       blocoInicio: new Date(inicio),
-      blocoFim: new Date(fimFerias),
+      blocoFim: semFerias ? new Date(inicio) : new Date(fimFerias),
       abonadas: [],
       doacoes: [],
+      diasEspeciais: [],
       meiosPeriodo: [],
       pontesAproveitadas: [],
       detalhesEmenda: [],
-      feriadosDesperdicados: 0
+      feriadosDesperdicados: 0,
+      semFerias: semFerias
     };
 
-    // Feriados cheios que caíram em dia útil DENTRO das férias (desperdício real)
-    for (let d = new Date(inicio); d <= fimFerias; d = addDias(d, 1)) {
-      const c = classificar(d, mapa);
-      if (c.estado === "folga" && !ehFimDeSemana(d)) res.feriadosDesperdicados++;
+    // Feriados cheios que caíram em dia útil DENTRO das férias (desperdício real).
+    // No modo "só folgas especiais" não há férias, então não há desperdício.
+    if (!semFerias) {
+      for (let d = new Date(inicio); d <= fimFerias; d = addDias(d, 1)) {
+        const c = classificar(d, mapa);
+        if (c.estado === "folga" && !ehFimDeSemana(d)) res.feriadosDesperdicados++;
+      }
+    }
+
+    // No modo só-folgas, ANCORA o 1º dia especial no próprio dia de início (que
+    // é sempre um dia útil). Sem isso, o dia de início ficaria como um "buraco"
+    // de trabalho dentro do bloco. Se não houver saldo, não há o que montar.
+    if (semFerias) {
+      if (!cfg.usarDiasEspeciais) { res.totalDescanso = 0; res.pontuacao = -1e9; return res; }
+      res.diasEspeciais.push({ dt: new Date(inicio), motivo: "Folga (banco de horas / TRE)", _ancora: true });
     }
 
     // Expande as pontas por dias "livres" (folga + facultativo).
@@ -152,14 +179,17 @@ const Motor = (function () {
 
     // Registra as emendas de ponta (feriados/facultativos em dia útil colados),
     // SEM contar fim de semana como mérito.
-    registrarEmendasPonta(res, inicio, fimFerias, mapa);
+    registrarEmendasPonta(res, res.blocoInicio, res.blocoFim, mapa);
 
-    // Aplica recursos (abonada/doação) para furar dias úteis de ponte.
-    if (cfg.usarAbonadas || cfg.usarDoacao) aplicarRecursos(res, mapa, cfg, restricoes || {});
+    // Aplica recursos (dias especiais / abonada / doação) para furar dias úteis.
+    if (cfg.usarAbonadas || cfg.usarDoacao || cfg.usarDiasEspeciais) {
+      aplicarRecursos(res, mapa, cfg, r);
+    }
 
     res.totalDescanso = diffDias(res.blocoInicio, res.blocoFim) + 1;
     res.totalAbonadas = res.abonadas.length;
     res.totalDoacoes = res.doacoes.length;
+    res.totalDiasEspeciais = res.diasEspeciais.length;
     res.pontuacao = pontuar(res, mapa);
     return res;
   }
@@ -213,6 +243,17 @@ const Motor = (function () {
     const permiteMesDuplo = !restricoes.fracionado && (regras.mesesDuplosNoAno || 0) > 0;
     let mesesDuplosRestantes = permiteMesDuplo ? regras.mesesDuplosNoAno : 0;
 
+    // Dias especiais (banco de horas / folgas TRE): saldo que o usuário informou.
+    // Sem teto do app — usa no máximo o que o usuário disse ter. Têm PRIORIDADE
+    // sobre abonada e doação ao furar dias úteis (ver reservar()).
+    // Desconta dias especiais já pré-alocados (ex.: a âncora do modo só-folgas).
+    const especiaisJaUsados = (res.diasEspeciais || []).length;
+    let diasEspeciaisRestantes = cfg.usarDiasEspeciais
+      ? Math.max(0, (restricoes.diasEspeciaisDisponiveis || 0) - especiaisJaUsados)
+      : 0;
+    // Se já há âncora (modo só-folgas), incorpora-a ao bloco antes de expandir.
+    if (especiaisJaUsados > 0) recomputarBloco(res, mapa);
+
     function abonadasNoMes(mesKey) { return abonadasPorMes[mesKey] || 0; }
 
     // doação só é permitida se estiver a >=90 dias de qualquer doação já no plano
@@ -234,8 +275,15 @@ const Motor = (function () {
       return false;
     }
 
-    // tenta reservar um recurso para "comprar" o dia (prioriza abonada, senão doação)
+    // tenta reservar um recurso para "comprar" o dia útil.
+    // PRIORIDADE: dias especiais (banco/TRE) -> abonada -> doação.
     function reservar(dia) {
+      // 1º) dia especial (banco de horas / folga TRE): preferência máxima.
+      if (cfg.usarDiasEspeciais && diasEspeciaisRestantes > 0) {
+        diasEspeciaisRestantes--;
+        res.diasEspeciais.push({ dt: new Date(dia), motivo: "Folga (banco de horas / TRE)" });
+        return "especial";
+      }
       const mesKey = iso(dia).slice(0, 7);
       const pode = cfg.usarAbonadas && podeAbonarNoMes(mesKey);
       if (pode) {
@@ -314,7 +362,10 @@ const Motor = (function () {
 
     function desfazer(reservas) {
       reservas.forEach(({ dia, tipo }) => {
-        if (tipo === "abonada") {
+        if (tipo === "especial") {
+          diasEspeciaisRestantes++; // devolve a cota de dia especial
+          res.diasEspeciais = res.diasEspeciais.filter((a) => +a.dt !== +dia);
+        } else if (tipo === "abonada") {
           const mesKey = iso(dia).slice(0, 7);
           abonadasPorMes[mesKey] = Math.max(0, abonadasNoMes(mesKey) - 1);
           // se esta abonada havia consumido a cota de mês duplo, devolve a cota
@@ -382,11 +433,53 @@ const Motor = (function () {
     // mês, tentamos colar UMA abonada em CADA ponta (início e fim). Quando as
     // férias cruzam a virada de mês, as pontas caem em meses diferentes e cabem
     // as duas abonadas — rendendo tipicamente +2 (ou mais) dias de descanso.
+
+    // ---- Dias especiais "de ponta" (PRIORIDADE sobre abonada/doação) ----
+    // Rodam ANTES das abonadas de ponta: o saldo de banco de horas / TRE é
+    // consumido primeiro para esticar o bloco. Cola em ambas as pontas enquanto
+    // houver saldo, dia útil e ganho líquido de descanso.
+    if (cfg.usarDiasEspeciais) {
+      colarDiasEspeciaisNaPonta(1);
+      colarDiasEspeciaisNaPonta(-1);
+    }
+
     if (cfg.usarAbonadas) {
       // depois do fim: avança colando abonadas enquanto o próximo dia for útil,
       // houver abonada disponível no mês e isso resultar em ganho de folga.
       colarAbonadasNaPonta(1);
       colarAbonadasNaPonta(-1);
+    }
+
+    // Cola dias especiais no 1º dia útil de uma ponta enquanto houver saldo e
+    // ganho líquido de descanso. Diferente da abonada, NÃO tem limite por mês
+    // nem teto anual — só o saldo informado pelo usuário. Pode furar pontes de
+    // mais de um dia útil (consome 1 dia especial por dia útil).
+    function colarDiasEspeciaisNaPonta(direcao) {
+      const MAX = 6; // segurança: no máx. 6 dias úteis seguidos por ponta
+      for (let i = 0; i < MAX; i++) {
+        if (diasEspeciaisRestantes <= 0) break;
+        const alvo = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
+        const c = classificar(alvo, mapa);
+        if (c.estado !== "util") break; // ponta já livre: recomputarBloco já cobriu
+
+        const descAntes = diffDias(res.blocoInicio, res.blocoFim) + 1;
+        const salvoIni = new Date(res.blocoInicio), salvoFim = new Date(res.blocoFim);
+        diasEspeciaisRestantes--;
+        const marca = { dt: new Date(alvo), motivo: "Folga (banco de horas / TRE)" };
+        res.diasEspeciais.push(marca);
+        if (direcao === 1) res.blocoFim = new Date(alvo);
+        else res.blocoInicio = new Date(alvo);
+        recomputarBloco(res, mapa);
+        const descDepois = diffDias(res.blocoInicio, res.blocoFim) + 1;
+
+        if (descDepois - descAntes < 1) {
+          // sem ganho real -> desfaz e encerra esta ponta (devolve a cota)
+          diasEspeciaisRestantes++;
+          res.diasEspeciais = res.diasEspeciais.filter((a) => a !== marca);
+          res.blocoInicio = salvoIni; res.blocoFim = salvoFim;
+          break;
+        }
+      }
     }
 
     // IMPORTANTE (prioridade): esta função roda DEPOIS de `tentar` (pontes) e
@@ -478,7 +571,9 @@ const Motor = (function () {
    * (abonadas/doações), de forma que o bloco seja realmente contíguo. */
   function recomputarBloco(res, mapa) {
     const comprados = new Set(
-      res.abonadas.map((a) => +a.dt).concat(res.doacoes.map((d) => +d.dt))
+      res.abonadas.map((a) => +a.dt)
+        .concat(res.doacoes.map((d) => +d.dt))
+        .concat((res.diasEspeciais || []).map((e) => +e.dt))
     );
     const coberto = (dt) => ehLivre(dt, mapa) || comprados.has(+new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()));
     let cursor = addDias(res.blocoFim, 1);
@@ -495,8 +590,14 @@ const Motor = (function () {
    * mesmo descanso, a que gasta MENOS recursos deve vencer). O mérito de gastar
    * um recurso já está refletido no ganho de `totalDescanso` e na `razao`. */
   function pontuar(res, mapa) {
-    const diasGastos = res.diasFerias + res.abonadas.length + res.doacoes.length;
-    const razao = res.totalDescanso / diasGastos;
+    // Dias gastos do saldo do servidor: férias + abonadas + doações + dias
+    // especiais (banco/TRE). Todos "custam" algo do servidor, então entram na
+    // razão descanso/gasto (preferir soluções que rendem mais por dia gasto).
+    // Guard: no modo "só folgas especiais" diasFerias=0; se nada for gasto,
+    // evita divisão por zero.
+    const diasGastos = res.diasFerias + res.abonadas.length + res.doacoes.length
+      + (res.diasEspeciais ? res.diasEspeciais.length : 0);
+    const razao = diasGastos > 0 ? res.totalDescanso / diasGastos : res.totalDescanso;
     const bonusEmenda = res.detalhesEmenda.length * 1.0; // só feriados/facult. em dia útil
     const penalidade = res.feriadosDesperdicados * 1.5;  // feriado dentro das férias = jogado fora
     // Pequeno desempate: quando as férias CRUZAM a virada de mês, cabem abonadas
@@ -504,7 +605,19 @@ const Motor = (function () {
     // bônus é só de desempate (não premia gasto de recurso: duas opções de mesmo
     // descanso e mesmo custo, prefere a que cruza o mês por ser mais flexível).
     const cruzaMes = res.inicioFerias.getMonth() !== res.fimFerias.getMonth() ? 0.5 : 0;
-    return razao * 10 + res.totalDescanso + bonusEmenda - penalidade + cruzaMes;
+    // Diretriz: dias especiais (banco/TRE) devem, por excelência, ficar colados a
+    // feriado/fim de semana. Premiamos cada dia especial cujo vizinho (dia antes
+    // ou depois) seja livre (FDS/feriado/facultativo) e penalizamos o que ficar
+    // "ilhado" entre dias úteis — assim o motor prefere a emenda limpa.
+    let bonusEspecialEmenda = 0;
+    if (res.diasEspeciais && res.diasEspeciais.length) {
+      for (const e of res.diasEspeciais) {
+        const encostaFolga = ehLivre(addDias(e.dt, 1), mapa) || ehLivre(addDias(e.dt, -1), mapa)
+          || ehFimDeSemana(addDias(e.dt, 1)) || ehFimDeSemana(addDias(e.dt, -1));
+        bonusEspecialEmenda += encostaFolga ? 0.6 : -0.4;
+      }
+    }
+    return razao * 10 + res.totalDescanso + bonusEmenda - penalidade + cruzaMes + bonusEspecialEmenda;
   }
 
   /* Gera e ordena todas as sugestões do ano para o modo escolhido.
@@ -539,13 +652,18 @@ const Motor = (function () {
       ? r.fracionado
       : !!(r.diasBloqueados || r.mesesAbonadaUsados || r.doacoesUsadas);
 
+    const soFolgas = diasFerias <= 0; // modo "só folgas especiais" (sem gastar férias)
     for (let d = new Date(inicioAno); d <= fimAno; d = addDias(d, 1)) {
       const c = classificar(d, mapa);
-      // Não iniciar férias em dia já livre (folga/facultativo) — desperdício.
+      // Não iniciar em dia já livre (folga/facultativo) — desperdício.
       if (c.estado === "folga" || c.estado === "facultativo") continue;
-      if (addDias(d, diasFerias - 1) > fimAno) break;
+      // garante que o bloco de férias caiba no ano (no modo só-folgas, basta 1 dia)
+      if (!soFolgas && addDias(d, diasFerias - 1) > fimAno) break;
 
       const sug = avaliarInicio(d, diasFerias, mapa, modo, r);
+      // No modo só-folgas, descarta sugestões que não conseguiram usar nenhum
+      // dia especial (seriam só um dia útil solto, sem valor).
+      if (soFolgas && sug.diasEspeciais.length === 0) continue;
       // Descarta sugestões cujo BLOCO toque qualquer dia bloqueado (regra B).
       if (r.diasBloqueados && blocoColide(sug, r.diasBloqueados)) continue;
       candidatos.push(sug);
@@ -557,7 +675,7 @@ const Motor = (function () {
     // Entre sugestões de bloco idêntico, preferimos a de MENOR custo de recursos
     // (abonadas + doações); havendo empate, a de maior pontuação (que já é a 1ª
     // encontrada, pois a lista vem ordenada por pontuação desc).
-    const custoRecursos = (s) => s.abonadas.length + s.doacoes.length;
+    const custoRecursos = (s) => s.abonadas.length + s.doacoes.length + (s.diasEspeciais ? s.diasEspeciais.length : 0);
     const posPorBloco = new Map(); // chaveBloco -> índice em `unicos`
     const unicos = [];
     for (const sug of candidatos) {

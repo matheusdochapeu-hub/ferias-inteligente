@@ -53,6 +53,33 @@
       <p id="aviso-venda" class="ajuda" style="display:none">
         💡 Servidores USP podem vender 10 dias (abono pecuniário) e gozar os 20 restantes — ex.: um bloco de 15 e outro de 5 dias.
       </p>
+
+      <!-- Passo opcional: banco de horas / folgas TRE -->
+      <div class="bloco-especiais">
+        <p class="especiais-pergunta">Você tem <strong>banco de horas</strong> ou <strong>folgas TRE</strong> e quer usar na simulação?</p>
+        <div class="grid-botoes grid-dias">
+          <button type="button" id="especiais-nao" class="btn-opcao especiais-opt sel">🙅 Não usar</button>
+          <button type="button" id="especiais-sim" class="btn-opcao especiais-opt">✅ Sim, tenho folgas</button>
+        </div>
+
+        <div id="especiais-painel" style="display:none">
+          <p class="ajuda">Quantos dias de folga (banco de horas / TRE) você quer usar?</p>
+          <div class="stepper" role="group" aria-label="Quantidade de folgas especiais">
+            <button type="button" class="stepper-btn" id="especiais-menos" aria-label="Diminuir">−</button>
+            <span class="stepper-valor" id="especiais-valor" aria-live="polite">0</span>
+            <button type="button" class="stepper-btn" id="especiais-mais" aria-label="Aumentar">+</button>
+            <span class="stepper-unidade">dia(s)</span>
+          </div>
+          <p class="ajuda especiais-dica">
+            💡 Essas folgas abatem só <strong>dias úteis</strong> e emendam fins de semana/feriados.
+            Você pode até escolher <strong>“0 dias de férias”</strong> abaixo para montar uma folga usando <em>somente</em> essas folgas, sem gastar férias.
+          </p>
+          <div class="grid-botoes grid-dias">
+            <button class="btn-opcao btn-dias btn-dias-especial" data-dias="0">0 dias de férias <small>(só folgas)</small></button>
+          </div>
+        </div>
+      </div>
+
       <button class="btn-voltar" data-voltar="tela-orgao">⬅️ Voltar ao início</button>
     </section>
 

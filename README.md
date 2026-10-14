@@ -51,6 +51,7 @@ js/motor.js                       → motor de cálculo (independente da interfa
 js/app.js                         → controle de telas e renderização
 js/dados.js                       → carregador: busca os JSON de feriados (fetch) e inicia o App
 js/feedback.js                    → modal "Fale com o desenvolvedor" (Google Forms embutido)
+                                    (dias especiais / banco de horas / TRE vivem em js/motor.js + js/app.js)
 js/contador.js                    → contador de acessos (painel visível só p/ o dev)
 data/entes.json                   → metadados dos entes (nome, esfera, pagamento) — sem datas
 data/feriados/nacionais-2027.json → feriados nacionais + facultativos nacionais
@@ -225,3 +226,24 @@ backend nem e-mail exposto no código.
   **fallback** para abrir o formulário em nova aba.
 - Para trocar o formulário: altere `FORM_URL` em `js/feedback.js` e o `href` de fallback em
   `index.html` (procure por `forms.gle`).
+
+## 🏦 Banco de horas / folgas TRE (dias especiais)
+
+Alguns servidores têm **banco de horas** ou **folgas TRE** (dias trabalhados na eleição que
+viram folga). Na tela de dias há um passo **opcional**: *"Você tem banco de horas / folgas
+TRE e quer usar?"* → **Não** / **Sim**. Ao escolher **Sim**, aparece um **stepper (− / +)**
+para informar **quantos** dias usar.
+
+Regras aplicadas pelo motor (valem para **todos os entes**, atuais e futuros):
+- **Prioridade:** os dias especiais são usados **antes** de abonadas e doação de sangue para
+  furar dias úteis e emendar feriados/fins de semana.
+- **Só dias úteis:** cada dia especial abate **um dia útil** (nunca sábado/domingo/feriado).
+- **Posicionamento inteligente:** por excelência, o motor cola os dias especiais **colados a
+  feriados/fins de semana** (que contam como descanso), maximizando a folga corrida.
+- **Sem teto do app:** usa no máximo o saldo que o usuário informar.
+- **Só quando ativado:** se o usuário não indicar, nada muda (feature desligada).
+- **Modo "0 dias de férias":** com saldo informado, aparece o botão **"0 dias de férias (só
+  folgas)"** — monta uma folga usando **somente** banco/TRE, **sem gastar férias** e sem
+  consumir abonadas/doação.
+
+No fracionamento (2º período), o saldo restante = informado − usados no 1º período.
