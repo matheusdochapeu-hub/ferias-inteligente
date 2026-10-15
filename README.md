@@ -76,14 +76,17 @@ Edite o JSON do ente/ano correspondente em **`data/feriados/`**. O formato de ca
 
 Tipos: `"feriado"` (dia cheio), `"facultativo"` (ponte/ponto facultativo), `"meio"` (meio período).
 
-### ⚠️ Pontos facultativos da PMRP 2027 (PREVISÃO)
-O Decreto Municipal de Ribeirão Preto com o calendário oficial de 2027 costuma sair no
-fim de outubro. Como ainda não foi publicado, os pontos facultativos de 2027 cadastrados
-são uma **PREVISÃO** baseada no padrão recorrente da PMRP (decretos de 2025 e 2026):
-Carnaval (08-09/02), Quarta de Cinzas (10/02, meio período), sexta pós-Corpus (28/05),
-Dia do Servidor (28/10), véspera de Natal (24/12) e de Ano-Novo (31/12). Quando o decreto
-oficial sair, confirme e ajuste `facultativosLocais` em `data/feriados/pmrp-2027.json`.
-Os **feriados** (20/01, 19/06, Corpus Christi, nacionais e estadual) já são definitivos.
+### Pontos facultativos de 2027 (confirmados)
+Os pontos facultativos de 2027 estão **confirmados** e são usados nos cálculos de folga:
+Carnaval (08-09/02), Quarta de Cinzas (10/02, meio período na PMRP/Limeira; feriado na USP),
+**sexta pós-Corpus (28/05) — ponto facultativo para TODOS os entes/cidades** (em
+`nacionaisFacultativos`; em Valinhos prevalece o feriado municipal dessa data), ponte de
+N. Sra. Aparecida (11/10), pós-Dia do Servidor (29/10), Dia do Servidor (28/10, municípios),
+ponte de Finados (01/11), véspera de Natal (24/12) e de Ano-Novo (31/12).
+
+> Para **anos futuros** gerados automaticamente (ver automação anual), os facultativos
+> continuam marcados como `"previsao"` até conferência humana — a confirmação acima vale
+> especificamente para 2027.
 
 ### 🩸 Doação de sangue
 No modo "Com abonadas + doação de sangue", a ferramenta sugere usar a folga de doação de
