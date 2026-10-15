@@ -55,6 +55,11 @@ js/pix.js                         → modal de doação via Pix (QR Code + copia
 js/vendor/qrcode.min.js           → gerador de QR Code (davidshimjs/qrcodejs, MIT, vendorizado)
                                     (dias especiais / banco de horas / TRE vivem em js/motor.js + js/app.js)
 js/contador.js                    → contador de acessos (painel visível só p/ o dev)
+js/pwa.js                         → registra o service worker (instalação + offline)
+sw.js                             → service worker: cache do app shell e dos feriados (offline)
+manifest.webmanifest              → metadados de instalação do PWA (nome, ícones, cores)
+icons/                            → ícones do PWA (192/512 + maskable), gerados por script
+scripts/gerar-icones.js           → gera os PNG de ícone sem dependências externas
 data/entes.json                   → metadados dos entes (nome, esfera, pagamento) — sem datas
 data/feriados/nacionais-2027.json → feriados nacionais + facultativos nacionais
 data/feriados/pmrp-2027.json      → feriados da PMRP (2027)
@@ -218,6 +223,37 @@ Moveis.entradasParaJSON(2028); // entradas já no formato dos JSON de feriados
 Derivadas a partir do Domingo de Páscoa: Carnaval (−48/−47 dias), Quarta de Cinzas (−46),
 Sexta-feira Santa (−2), Corpus Christi (+60). Validado contra as datas oficiais de 2024–2035
 e contra os dados de 2027 já presentes no app.
+
+## 📱 App instalável e offline (PWA)
+
+O app é um **PWA** (Progressive Web App): dá para **instalá-lo** no celular ou no
+computador e usá-lo **offline**, sem loja de aplicativos e sem custo.
+
+- **Instalar no Android/desktop (Chrome/Edge):** abra o site e toque em
+  *Instalar app* (ou menu ⋮ → *Instalar / Adicionar à tela inicial*).
+- **Instalar no iPhone/iPad (Safari):** botão *Compartilhar* → *Adicionar à Tela de Início*.
+- **Offline:** depois da primeira visita com internet, o app abre e calcula tudo
+  mesmo sem conexão. Os feriados ficam em cache e são atualizados em segundo plano
+  quando houver rede (estratégia *stale-while-revalidate*), respeitando a atualização
+  anual dos dados.
+
+**Como funciona (arquivos):**
+
+- `manifest.webmanifest` — nome, ícones, cores e modo de exibição (`standalone`).
+- `sw.js` — service worker: faz *precache* do app shell (HTML/CSS/JS/ícones) e serve
+  os JSON de feriados com *stale-while-revalidate*. Ao publicar mudanças, **incremente
+  `CACHE_VERSION`** no topo do `sw.js` para invalidar o cache antigo.
+- `js/pwa.js` — registra o service worker (só sob `http`/`https`; via `file://` é ignorado).
+- `icons/` — ícones PNG (192, 512 e *maskable* 512). Para regenerá-los:
+  `node scripts/gerar-icones.js` (não precisa de nenhuma biblioteca).
+
+> **Nota:** o service worker exige ser servido por `http(s)` — funciona no GitHub Pages
+> ou num servidor local; abrindo o `index.html` direto por `file://` ele não é registrado
+> (o app continua funcionando normalmente, só sem o modo offline).
+
+> **Quer publicar na Play Store depois?** O caminho natural é empacotar este PWA como
+> **TWA** (Trusted Web Activity) com o *Bubblewrap* — exige uma conta de desenvolvedor
+> Google Play (taxa única). O PWA já cobre instalação + offline sem precisar da loja.
 
 ## 💬 Fale com o desenvolvedor (feedback)
 
