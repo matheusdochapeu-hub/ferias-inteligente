@@ -553,6 +553,26 @@ const App = (function () {
       ? "Quantos dias você quer selecionar no 2º período?"
       : `Você quer selecionar os ${opcoes[0]} dias restantes?`;
 
+    // Aviso de Limeira: a cota de "mês duplo" (2 abonadas num mesmo mês) só vale
+    // para férias em PERÍODO ÚNICO. Se o 1º período usou 2 abonadas no mesmo mês
+    // e o servidor FRACIONAR, essa vantagem não é permitida. Alertamos aqui.
+    const aviso = $("#decisao-aviso-especial");
+    if (aviso) {
+      // O motor marca com `_duplo: true` a abonada que consumiu a cota de "mês
+      // duplo" (2 abonadas no mesmo mês), vantagem exclusiva de período único.
+      const usouMesDuplo = (p.sugestao.abonadas || []).some((a) => a._duplo);
+      if (usouMesDuplo) {
+        aviso.style.display = "";
+        aviso.innerHTML =
+          `⚠️ <strong>Atenção (Limeira):</strong> o 1º período usa <strong>2 abonadas no mesmo mês</strong>, ` +
+          `o que só é permitido quando as férias são tiradas em <strong>período único</strong>. ` +
+          `Se você <strong>dividir</strong> as férias (planejar um 2º período), essa vantagem não vale — ` +
+          `nesse caso, reveja o 1º período ou finalize sem dividir.`;
+      } else {
+        aviso.style.display = "none";
+      }
+    }
+
     const wrap = $("#decisao-botoes");
     wrap.innerHTML = "";
 
