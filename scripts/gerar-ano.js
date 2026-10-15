@@ -228,7 +228,14 @@ const carnaval = [
 ];
 const outrosFacNac = (nacMolde.nacionaisFacultativos || [])
   .filter((it) => !mapaMv[it.data] && !/carnaval/i.test(it.nome))
-  .map((it) => comoPrevisao({ data: trocaAno(it.data, ANO_ALVO), nome: it.nome, tipo: it.tipo }));
+  .map((it) => {
+    // Facultativos nacionais colados a um feriado MÓVEL (ex.: sexta pós-Corpus)
+    // devem ACOMPANHAR o móvel no ano-alvo, não só trocar o ano. Reusa a mesma
+    // heurística de deslocamento usada para os facultativos por ente.
+    const derivada = ajustarDerivadaDeMovel(it.data, ANO_MOLDE, ANO_ALVO);
+    const dataNova = derivada || trocaAno(it.data, ANO_ALVO);
+    return comoPrevisao({ data: dataNova, nome: it.nome, tipo: it.tipo });
+  });
 const nacionalDoc = {
   ano: ANO_ALVO,
   quartaDeCinzas: mv.quartaDeCinzas,
