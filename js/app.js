@@ -120,19 +120,11 @@ const App = (function () {
     );
 
     // ---- Banco de horas / folgas TRE (passo opcional na tela de dias) ----
+    // As funções de sincronização visual (marcarEspOpt/atualizaValorEsp) estão
+    // no escopo do módulo para que renderInfoEnte() possa restaurar o bloco toda
+    // vez que a tela-dias é montada (p/ qualquer ente). Aqui só registramos os
+    // listeners dos botões.
     const espNao = $("#especiais-nao"), espSim = $("#especiais-sim");
-    const espPainel = $("#especiais-painel"), espValor = $("#especiais-valor");
-    function marcarEspOpt(ativo) {
-      if (espSim) espSim.classList.toggle("sel", ativo);
-      if (espNao) espNao.classList.toggle("sel", !ativo);
-      if (espPainel) espPainel.style.display = ativo ? "" : "none";
-    }
-    function atualizaValorEsp() {
-      if (espValor) espValor.textContent = String(estado.diasEspeciais);
-      // o botão "0 dias (só folgas)" só faz sentido com saldo >= 1
-      const btnSo = document.querySelector(".btn-dias-especial");
-      if (btnSo) btnSo.style.display = estado.diasEspeciais > 0 ? "" : "none";
-    }
     if (espNao) espNao.addEventListener("click", () => {
       estado.usaEspeciais = false;
       estado.diasEspeciais = 0;
@@ -155,6 +147,7 @@ const App = (function () {
     if (espMais) espMais.addEventListener("click", () => {
       estado.diasEspeciais = Math.min(60, estado.diasEspeciais + 1); // teto de segurança da UI
       estado.usaEspeciais = true;
+      marcarEspOpt(true); // garante que o painel esteja aberto ao aumentar
       atualizaValorEsp();
     });
 
@@ -205,6 +198,31 @@ const App = (function () {
     });
   }
 
+  /* ---- Sincronização visual do bloco "dias especiais" (banco de horas/TRE) ----
+   * Estas funções estão no escopo do MÓDULO (não dentro de iniciar) para que
+   * renderInfoEnte() possa restaurar o bloco toda vez que a tela-dias é montada,
+   * para QUALQUER ente (USP, PMRP, Limeira). Antes, o visual só mudava ao clicar,
+   * então ao trocar de ente o bloco ficava dessincronizado com o estado. */
+  function marcarEspOpt(ativo) {
+    const espSim = $("#especiais-sim"), espNao = $("#especiais-nao"), espPainel = $("#especiais-painel");
+    if (espSim) espSim.classList.toggle("sel", ativo);
+    if (espNao) espNao.classList.toggle("sel", !ativo);
+    if (espPainel) espPainel.style.display = ativo ? "" : "none";
+  }
+  function atualizaValorEsp() {
+    const espValor = $("#especiais-valor");
+    if (espValor) espValor.textContent = String(estado.diasEspeciais);
+    // o botão "0 dias (só folgas)" só faz sentido com saldo >= 1
+    const btnSo = document.querySelector(".btn-dias-especial");
+    if (btnSo) btnSo.style.display = estado.diasEspeciais > 0 ? "" : "none";
+  }
+  /* Restaura o bloco de especiais ao estado lógico atual (usado ao entrar na
+   * tela-dias). Mantém a escolha do usuário se ele já ativou nesta sessão. */
+  function sincronizarEspeciais() {
+    marcarEspOpt(!!estado.usaEspeciais);
+    atualizaValorEsp();
+  }
+
   function renderInfoEnte() {
     const ente = window.CALENDARIOS[window.ANO_ATIVO].entes[estado.ente];
     let txt = ente.nome;
@@ -218,6 +236,11 @@ const App = (function () {
     });
     const avisoVenda = $("#aviso-venda");
     if (avisoVenda) avisoVenda.style.display = ehUsp ? "" : "none";
+
+    // Sincroniza o bloco de banco de horas / folgas TRE com o estado atual —
+    // vale para TODOS os entes (corrige o caso de USP/Limeira ficarem com o
+    // bloco dessincronizado após navegação entre entes).
+    sincronizarEspeciais();
   }
 
   /* Quais nº de dias podem ser escolhidos no 2º período, dado o 1º.
