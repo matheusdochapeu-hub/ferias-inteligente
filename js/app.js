@@ -56,7 +56,6 @@ const App = (function () {
     const ano = window.ANO_ATIVO;
     const subt = $("#ano-subtitulo"); if (subt) subt.textContent = " · " + ano;
     const plano = $("#ano-plano"); if (plano) plano.textContent = ano;
-    const rod = $("#ano-rodape"); if (rod) rod.textContent = " de " + ano;
     const titulo = document.querySelector("title");
     if (titulo) titulo.textContent = `Férias Inteligente — Servidores Públicos (${ano})`;
 
