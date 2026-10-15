@@ -171,6 +171,10 @@ const Motor = (function () {
     // de trabalho dentro do bloco. Se não houver saldo, não há o que montar.
     if (semFerias) {
       if (!cfg.usarDiasEspeciais) { res.totalDescanso = 0; res.pontuacao = -1e9; return res; }
+      // A âncora é sempre um dia de início candidato de `calcular`, que já pula
+      // folgas/facultativos (e todo FDS é "folga"), então `inicio` é dia de
+      // semana. Guardamos explicitamente: banco de horas / TRE só em seg–sex.
+      if (ehFimDeSemana(inicio)) { res.totalDescanso = 0; res.pontuacao = -1e9; return res; }
       res.diasEspeciais.push({ dt: new Date(inicio), motivo: "Folga (banco de horas / TRE)", _ancora: true });
     }
 
@@ -279,7 +283,11 @@ const Motor = (function () {
     // PRIORIDADE: dias especiais (banco/TRE) -> abonada -> doação.
     function reservar(dia) {
       // 1º) dia especial (banco de horas / folga TRE): preferência máxima.
-      if (cfg.usarDiasEspeciais && diasEspeciaisRestantes > 0) {
+      // Banco de horas / folgas TRE SÓ podem ser usados em dias de semana
+      // (segunda a sexta) — nunca em sábado/domingo. Trava explícita: os
+      // chamadores já só passam dias "util" (que excluem FDS), mas garantimos
+      // aqui para que a invariante não dependa de quem chama.
+      if (cfg.usarDiasEspeciais && diasEspeciaisRestantes > 0 && !ehFimDeSemana(dia)) {
         diasEspeciaisRestantes--;
         res.diasEspeciais.push({ dt: new Date(dia), motivo: "Folga (banco de horas / TRE)" });
         return "especial";
@@ -464,7 +472,9 @@ const Motor = (function () {
         if (diasEspeciaisRestantes <= 0) break;
         const alvo = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
         const c = classificar(alvo, mapa);
-        if (c.estado !== "util") break; // ponta já livre: recomputarBloco já cobriu
+        // ponta já livre: recomputarBloco já cobriu. Além disso, banco/TRE só
+        // em dia de semana (estado "util" já exclui FDS; redundância defensiva).
+        if (c.estado !== "util" || ehFimDeSemana(alvo)) break;
 
         const descAntes = diffDias(res.blocoInicio, res.blocoFim) + 1;
         const salvoIni = new Date(res.blocoInicio), salvoFim = new Date(res.blocoFim);

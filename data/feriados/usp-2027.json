@@ -5,7 +5,17 @@
   "estaduais": [
     { "data": "2027-02-10", "nome": "Quarta-feira de Cinzas (atividades suspensas)", "tipo": "feriado" },
     { "data": "2027-05-27", "nome": "Corpus Christi", "tipo": "feriado" },
-    { "data": "2027-07-09", "nome": "Revolução Constitucionalista (estadual SP)", "tipo": "feriado" }
+    { "data": "2027-07-09", "nome": "Revolução Constitucionalista (estadual SP)", "tipo": "feriado" },
+    { "data": "2027-12-20", "nome": "Recesso de fim de ano (USP)", "tipo": "feriado" },
+    { "data": "2027-12-21", "nome": "Recesso de fim de ano (USP)", "tipo": "feriado" },
+    { "data": "2027-12-22", "nome": "Recesso de fim de ano (USP)", "tipo": "feriado" },
+    { "data": "2027-12-23", "nome": "Recesso de fim de ano (USP)", "tipo": "feriado" },
+    { "data": "2027-12-24", "nome": "Recesso de fim de ano (USP)", "tipo": "feriado" },
+    { "data": "2027-12-27", "nome": "Recesso de fim de ano (USP)", "tipo": "feriado" },
+    { "data": "2027-12-28", "nome": "Recesso de fim de ano (USP)", "tipo": "feriado" },
+    { "data": "2027-12-29", "nome": "Recesso de fim de ano (USP)", "tipo": "feriado" },
+    { "data": "2027-12-30", "nome": "Recesso de fim de ano (USP)", "tipo": "feriado" },
+    { "data": "2027-12-31", "nome": "Recesso de fim de ano (USP)", "tipo": "feriado" }
   ],
   "facultativosGerais": [
     { "data": "2027-10-28", "nome": "Dia do Servidor Público (ponto facultativo)", "tipo": "facultativo" }
