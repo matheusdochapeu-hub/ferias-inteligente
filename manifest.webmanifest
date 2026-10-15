@@ -1,0 +1,34 @@
+{
+  "name": "Férias Inteligente — Servidores Públicos",
+  "short_name": "Férias",
+  "description": "Descubra as melhores datas para tirar férias e emendar feriados — servidores da USP e das Prefeituras de Ribeirão Preto e Limeira.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#e3f2fd",
+  "theme_color": "#0d47a1",
+  "categories": ["productivity", "utilities", "lifestyle"],
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
