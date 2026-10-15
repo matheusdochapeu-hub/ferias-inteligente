@@ -66,8 +66,17 @@
     else if (e.target.closest("[data-fechar-feedback]")) { e.preventDefault(); fechar(); }
   });
 
-  // Esc fecha o modal.
+  // Esc fecha o modal; Tab fica preso dentro do modal (focus-trap, a11y).
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape" && !modal.hidden) fechar();
+    if (modal.hidden) return;
+    if (e.key === "Escape") { fechar(); return; }
+    if (e.key === "Tab") {
+      var foco = modal.querySelectorAll('a[href], button, textarea, input, select, iframe, [tabindex]:not([tabindex="-1"])');
+      foco = Array.prototype.filter.call(foco, function (el) { return !el.disabled && el.offsetParent !== null || el.tagName === "IFRAME"; });
+      if (!foco.length) return;
+      var primeiro = foco[0], ultimo = foco[foco.length - 1];
+      if (e.shiftKey && document.activeElement === primeiro) { e.preventDefault(); ultimo.focus(); }
+      else if (!e.shiftKey && document.activeElement === ultimo) { e.preventDefault(); primeiro.focus(); }
+    }
   });
 })();
