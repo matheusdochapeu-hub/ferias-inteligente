@@ -370,7 +370,8 @@ const App = (function () {
     } else {
       $("#aviso-cinzas").innerHTML =
         `🔸 <strong>Quarta-feira de Cinzas (${H.fmt(cinzas)}/${window.ANO_ATIVO}):</strong> ` +
-        `expediente de meio período — ótimo para encurtar o dia, mas não é feriado cheio.`;
+        `expediente de meio período — o dia é mais curto, mas você precisa comparecer. ` +
+        `Por isso ele <strong>não é usado para montar emendas</strong>; fica só como aviso.`;
     }
 
     // aviso do que já foi escolhido (etapa 2)

@@ -322,10 +322,14 @@ const Motor = (function () {
         }
 
         if (c.estado === "meio") {
-          // meio período: emenda parcial; não gasta recurso e não bloqueia a ponte
+          // Meio período (ex.: Quarta de Cinzas na PMRP/Limeira): o expediente é
+          // reduzido, mas o servidor PRECISA comparecer — portanto NÃO gera emenda
+          // e ENCERRA a ponte (não dá para "atravessar" o meio dia como se fosse
+          // livre). Registramos só para a nota textual; candidatos pendentes desta
+          // ponta são descartados (não há dia livre fechando a ponte). Na USP a
+          // Quarta de Cinzas é feriado cheio, então nunca cai neste ramo.
           res.meiosPeriodo.push({ dt: new Date(cursor), motivo: c.motivo });
-          cursor = addDias(cursor, direcao);
-          continue;
+          break;
         }
 
         if (c.estado === "folga" || c.estado === "facultativo") {
