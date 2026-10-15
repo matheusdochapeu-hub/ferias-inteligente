@@ -291,7 +291,7 @@ No fracionamento (2º período), o saldo restante = informado − usados no 1º 
 
 ## 💚 Doação via Pix
 
-Botão **"💚 Gostou do app? Manda um Pix!"** na tela inicial e na tela final. Abre um modal com:
+Botão **"☕ Me pague um café"** na tela inicial e na tela final. Abre um modal com:
 - o **QR Code** do Pix, gerado **no próprio app** a partir do código "copia e cola"
   (biblioteca `qrcode.min.js`, MIT, vendorizada em `js/vendor/` — funciona offline, sem CDN);
 - um botão **"Copiar chave Pix"** (com fallback para navegadores antigos).
