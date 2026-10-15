@@ -726,7 +726,8 @@ const App = (function () {
       `<span class="lg lg-especial"></span>Banco/TRE` +
       `<span class="lg lg-ponte"></span>Ponte/facult.` +
       `<span class="lg lg-meio"></span>Meio período` +
-      `<span class="lg lg-fds"></span>Fim de semana`;
+      `<span class="lg lg-fds"></span>Fim de semana` +
+      `<span class="lg lg-fora-feriado"></span>Feriado próximo (fora do período)`;
     wrap.appendChild(leg);
     return wrap;
   }
@@ -742,15 +743,28 @@ const App = (function () {
       && dt <= ctx.fim;
     if (!dentroBloco) {
       if (ctx.setFerias.has(k)) return "ferias";
+      // Marca feriados/pontes mesmo FORA do bloco, para o usuário enxergar as
+      // oportunidades de emenda vizinhas (ex.: um feriado logo antes/depois do
+      // bloco que ele poderia aproveitar). Fim de semana é sempre "folga", então
+      // só destacamos quando NÃO é fim de semana.
+      const cf = Motor.classificar(dt, ctx.mapa);
+      if (!H.ehFimDeSemana(dt)) {
+        if (cf.estado === "folga") return "fora feriado-fora";
+        if (cf.estado === "facultativo") return "fora ponte-fora";
+        if (cf.estado === "meio") return "fora meio-fora";
+      }
       return H.ehFimDeSemana(dt) ? "fora fds-fora" : "fora";
     }
     if (ctx.setFerias.has(k)) return "ferias";
+    // Fim de semana SEMPRE tem precedência sobre banco/TRE, abonada e doação:
+    // esses recursos nunca são gastos em sábado/domingo, então um dia de FDS
+    // dentro do bloco deve aparecer como "Fim de semana", nunca como TRE/abonada.
+    if (H.ehFimDeSemana(dt)) return "fds";
     if (ctx.setEspecial && ctx.setEspecial.has(k)) return "especial";
     if (ctx.setAbonada.has(k)) return "abonada";
     if (ctx.setDoacao.has(k)) return "doacao";
     const c = Motor.classificar(dt, ctx.mapa);
-    if (c.estado === "folga" && !H.ehFimDeSemana(dt)) return "feriado";
-    if (H.ehFimDeSemana(dt)) return "fds";
+    if (c.estado === "folga") return "feriado";
     if (c.estado === "facultativo") return "ponte";
     if (c.estado === "meio" || ctx.setMeio.has(k)) return "meio";
     return "util-dentro";
@@ -758,6 +772,14 @@ const App = (function () {
 
   function tituloDoDia(dt, k, mapa, setFerias, setAbonada, setDoacao, setEspecial) {
     if (setFerias.has(k)) return "Férias";
+    // Fim de semana primeiro: banco/TRE, abonada e doação nunca caem em FDS, então
+    // um sábado/domingo não deve receber o rótulo desses recursos.
+    if (H.ehFimDeSemana(dt)) {
+      const cf = Motor.classificar(dt, mapa);
+      // se houver feriado nomeado caindo no FDS, mostra o nome; senão, "Fim de semana"
+      return (cf.motivo && cf.motivo !== "Dia útil" && cf.motivo !== "Fim de semana")
+        ? cf.motivo : "Fim de semana";
+    }
     if (setEspecial && setEspecial.has(k)) return "Folga (banco de horas / TRE)";
     if (setAbonada.has(k)) return "Abonada";
     if (setDoacao.has(k)) return "Doação de sangue";

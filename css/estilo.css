@@ -295,6 +295,11 @@ h2 {
 .mini-dia.vazio { background: transparent; }
 .mini-dia.fora { background: #fff; color: #c3ccd4; }
 .mini-dia.fds-fora { background: #fafbfc; color: #d2dae1; }
+/* feriados/pontes FORA do bloco escolhido: versão suave + borda tracejada,
+   sinalizam oportunidades de emenda vizinhas (ex.: um feriado logo ao lado). */
+.mini-dia.feriado-fora { background: #e8f5e9; color: #66bb6a; border: 1px dashed #a5d6a7; }
+.mini-dia.ponte-fora   { background: #e1f5fe; color: #4fc3f7; border: 1px dashed #81d4fa; }
+.mini-dia.meio-fora    { background: #efebe9; color: #a1887f; border: 1px dashed #bcaaa4; }
 
 /* dentro do bloco */
 .mini-dia.fds       { background: #e8edf2; color: #78909c; }
@@ -334,6 +339,7 @@ h2 {
 .lg-ponte   { background: #b3e5fc; }
 .lg-meio    { background: #d7ccc8; }
 .lg-fds     { background: #e8edf2; }
+.lg-fora-feriado { background: #e8f5e9; border: 1px dashed #a5d6a7; }
 
 /* ---------- Rodapé ---------- */
 .rodape {
