@@ -304,9 +304,9 @@ na impressão/PDF.
 
 Projeto **"Feito e pensado por MRR, FSS e TP"**.
 
+- **MRR — Matheus Rodrigues Ribeiro** ([@matheusdochapeu-hub](https://github.com/matheusdochapeu-hub))
 - **FSS — Fabiano Schiavi** · [fabiano.schiavi@hotmail.com](mailto:fabiano.schiavi@hotmail.com)
-- **MRR** — Matheus ([@matheusdochapeu-hub](https://github.com/matheusdochapeu-hub))
-- **TP**
+- **TP — Thiago Polônio**
 
 > Contribuições são bem-vindas. Para colaborar no código, abra uma _issue_ ou um _pull request_
 > no repositório.
