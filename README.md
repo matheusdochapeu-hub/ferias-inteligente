@@ -299,3 +299,14 @@ Botão **"☕ Me pague um café"** na tela inicial e na tela final. Abre um moda
 A chave/código Pix fica em `PIX_COPIA_COLA` no topo de `js/pix.js` (payload EMV completo, com
 CRC16 validado). Para trocar: substitua o código "copia e cola" lá. O QR e o botão não aparecem
 na impressão/PDF.
+
+## 👥 Autores e créditos
+
+Projeto **"Feito e pensado por MRR, FSS e TP"**.
+
+- **FSS — Fabiano Schiavi** · [fabiano.schiavi@hotmail.com](mailto:fabiano.schiavi@hotmail.com)
+- **MRR** — Matheus ([@matheusdochapeu-hub](https://github.com/matheusdochapeu-hub))
+- **TP**
+
+> Contribuições são bem-vindas. Para colaborar no código, abra uma _issue_ ou um _pull request_
+> no repositório.
