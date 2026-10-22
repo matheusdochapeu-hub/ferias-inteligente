@@ -10,9 +10,9 @@ const App = (function () {
   const H = Motor.helpers;
 
   const estado = {
-    ente: null,       // "pmrp" | "usp"
+    ente: null,       // "pmrp" | "usp" | "limeira"
     cidade: null,     // apenas USP
-    dias: null,       // dias da ETAPA atual (10|15|20|30 ou o que sobrou)
+    dias: null,       // dias da ETAPA atual (0|5|10|15|20|30 ou o que sobrou)
     modo: "corridas", // modo de cálculo atual
     plano: [],        // períodos já escolhidos: [{ sugestao, modo, dias }]
     etapa: 1,         // 1 = primeira seleção, 2 = segunda (dias restantes)
@@ -24,6 +24,15 @@ const App = (function () {
   const TOTAL_FERIAS = 30; // direito total de dias no ano
 
   const $ = (sel) => document.querySelector(sel);
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return "";
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
   const el = (tag, cls, html) => {
     const e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -31,11 +40,28 @@ const App = (function () {
     return e;
   };
 
-  function mostrarTela(id) {
+  // Suporte ao botão Voltar do navegador/celular (History API) e gestão de foco (A8)
+  function mostrarTela(id, vindoDoPopstate) {
     document.querySelectorAll(".tela").forEach((t) => t.classList.remove("ativa"));
-    $("#" + id).classList.add("ativa");
+    const sec = $("#" + id);
+    if (!sec) return;
+    sec.classList.add("ativa");
+    if (!vindoDoPopstate && window.history && window.history.pushState) {
+      window.history.pushState({ tela: id }, "", "#" + id);
+    }
+    const h2 = sec.querySelector("h2");
+    if (h2) {
+      h2.setAttribute("tabindex", "-1");
+      h2.focus({ preventScroll: true });
+    }
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  window.addEventListener("popstate", (e) => {
+    const alvo = (e.state && e.state.tela) || "tela-orgao";
+    if (alvo === "tela-orgao") resetar();
+    mostrarTela(alvo, true);
+  });
 
   /* ---------- Inicialização / listeners ---------- */
   function iniciar() {
@@ -111,12 +137,33 @@ const App = (function () {
       })
     );
 
-    document.querySelectorAll(".aba[data-modo]").forEach((b) =>
+    // Suporte WAI-ARIA tablist e navegação por teclado (M8)
+    const abas = document.querySelectorAll(".aba[data-modo]");
+    abas.forEach((b, idx) => {
       b.addEventListener("click", () => {
         estado.modo = b.getAttribute("data-modo");
+        abas.forEach((a) => {
+          const ativo = a === b;
+          a.classList.toggle("ativa", ativo);
+          a.setAttribute("aria-selected", ativo ? "true" : "false");
+          a.setAttribute("tabindex", ativo ? "0" : "-1");
+        });
         renderResultados();
-      })
-    );
+      });
+      b.addEventListener("keydown", (e) => {
+        if (e.key === "ArrowRight") {
+          e.preventDefault();
+          const prox = abas[(idx + 1) % abas.length];
+          prox.focus();
+          prox.click();
+        } else if (e.key === "ArrowLeft") {
+          e.preventDefault();
+          const prev = abas[(idx - 1 + abas.length) % abas.length];
+          prev.focus();
+          prev.click();
+        }
+      });
+    });
 
     // ---- Banco de horas / folgas TRE (passo opcional na tela de dias) ----
     // As funções de sincronização visual (marcarEspOpt/atualizaValorEsp) estão
@@ -223,10 +270,35 @@ const App = (function () {
   }
 
   function renderInfoEnte() {
-    const ente = window.CALENDARIOS[window.ANO_ATIVO].entes[estado.ente];
+    const C = window.CALENDARIOS[window.ANO_ATIVO];
+    const ente = C.entes[estado.ente];
     let txt = ente.nome;
     if (estado.ente === "usp" && estado.cidade) txt += " — " + estado.cidade;
     $("#info-ente").textContent = txt;
+
+    // B12: aviso quando todos os feriados municipais caem em fim de semana
+    let avisoFds = $("#aviso-municipais-fds");
+    if (estado.ente === "usp" && estado.cidade && C.entes.usp.cidades && C.entes.usp.cidades[estado.cidade]) {
+      const municipais = C.entes.usp.cidades[estado.cidade];
+      const todosFds = municipais.length > 0 && municipais.every((f) => {
+        const [a, m, d] = f.data.split("-").map(Number);
+        const g = new Date(a, m - 1, d).getDay();
+        return g === 0 || g === 6;
+      });
+      if (todosFds) {
+        if (!avisoFds) {
+          avisoFds = el("p", "ajuda aviso-municipais-fds", "");
+          avisoFds.id = "aviso-municipais-fds";
+          $("#info-ente").after(avisoFds);
+        }
+        avisoFds.style.display = "";
+        avisoFds.innerHTML = `ℹ️ <strong>Nota sobre ${escapeHtml(estado.cidade)}:</strong> todos os feriados municipais deste ano caem no fim de semana, por isso não geram emendas adicionais em dias úteis.`;
+      } else if (avisoFds) {
+        avisoFds.style.display = "none";
+      }
+    } else if (avisoFds) {
+      avisoFds.style.display = "none";
+    }
 
     // Opção de 5 dias e aviso de venda: exclusivos da USP
     const ehUsp = estado.ente === "usp";
@@ -243,22 +315,32 @@ const App = (function () {
   }
 
   /* Quais nº de dias podem ser escolhidos no 2º período, dado o 1º.
-   * Regras definidas pelo usuário:
+   * Regras:
+   *   0  -> oferece [30, 20, 15, 10] (+ 5 na USP) para planejar as férias após folgas puras (A4)
    *   5  -> oferece [15]        (vendeu 10; 5+15 = 20)
    *   15 -> oferece [15, 5]     (15+15 = 30 cheios  OU  15+5 = 20 vendendo 10)
    *   10 -> oferece [20]
    *   20 -> oferece [10]
    *   30 -> (nada; finaliza)
-   * Observação: 5 só é válido para USP. */
+   * Observação: 5 só é válido para USP. Se restarem folgas de banco/TRE, permite bloco de 0 dias (M11). */
   function opcoesRestantes(diasEscolhidos, ehUsp) {
     const mapa = {
+      0:  ehUsp ? [30, 20, 15, 10, 5] : [30, 20, 15, 10],
       5:  ehUsp ? [15] : [],
       10: [20],
       15: ehUsp ? [15, 5] : [15],
       20: [10],
       30: []
     };
-    return mapa[diasEscolhidos] || [];
+    let lista = (mapa[diasEscolhidos] || []).slice();
+    // M11: se sobrou saldo de dias especiais após o 1º período, permite adicionar bloco de só-folgas (0 dias)
+    if (diasEscolhidos > 0 && estado.usaEspeciais && estado.plano && estado.plano.length > 0) {
+      const usados = (estado.plano[0].sugestao.diasEspeciais || []).length;
+      if (estado.diasEspeciais - usados > 0 && !lista.includes(0)) {
+        lista.push(0);
+      }
+    }
+    return lista;
   }
 
   /* ---------- Tela: preferência de mês ---------- */
@@ -387,13 +469,20 @@ const App = (function () {
       avisoPlano.style.display = "none";
     }
 
+    // No modo "0 dias de férias (só folgas)", oculta as 4 abas redundantes (A4)
+    const abasEl = document.querySelector(".abas");
+    if (abasEl) abasEl.style.display = estado.dias === 0 ? "none" : "";
+
     const restr = estado.etapa === 2
-      ? restricoesDoPlano()
-      : { diasEspeciaisDisponiveis: estado.usaEspeciais ? estado.diasEspeciais : 0 };
+      ? Object.assign(restricoesDoPlano(), { mesesPreferidos: estado.mesesPreferidos })
+      : {
+          diasEspeciaisDisponiveis: estado.usaEspeciais ? estado.diasEspeciais : 0,
+          mesesPreferidos: estado.mesesPreferidos
+        };
     let lista = Motor.calcular(estado.ente, estado.cidade, estado.dias, estado.modo, restr);
     const totalAntesFiltroMes = lista.length;
 
-    // filtro de preferência de mês: mantém sugestões que INICIAM num mês escolhido
+    // filtro de preferência de mês: garante consistência se chamado diretamente
     const temFiltroMes = estado.mesesPreferidos && estado.mesesPreferidos.length;
     if (temFiltroMes) {
       const meses = new Set(estado.mesesPreferidos);
@@ -441,7 +530,10 @@ const App = (function () {
     const card = el("div", "card" + (i === 0 ? " card-top" : ""));
 
     const medalha = i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`;
-    const ganhos = r.totalDescanso - r.diasFerias;
+    // No modo sem férias, desconta os dias de banco/TRE para não inflar o ganho (A4)
+    const ganhos = r.semFerias
+      ? Math.max(0, r.totalDescanso - (r.diasEspeciais ? r.diasEspeciais.length : 0))
+      : (r.totalDescanso - r.diasFerias);
     const cab = el("div", "card-cab");
     cab.innerHTML =
       `<span class="posicao">${medalha}</span>` +
@@ -579,8 +671,21 @@ const App = (function () {
 
     // um botão por opção de dias restantes (ex.: 15 oferece [15, 5])
     opcoes.forEach((dias) => {
-      const b = el("button", "btn-opcao grande", `📅 Sim, planejar ${dias} dias`);
+      const rotulo = dias === 0
+        ? "🏦 Sim, planejar folgas (banco/TRE)"
+        : `📅 Sim, planejar ${dias} dias`;
+      const b = el("button", "btn-opcao grande", rotulo);
       b.addEventListener("click", () => {
+        // Ao dividir férias em Limeira, remover mês duplo do 1º período (A1)
+        const p0 = estado.plano[0];
+        if (p0 && (p0.sugestao.abonadas || []).some((a) => a._duplo)) {
+          const listaSemDuplo = Motor.calcular(estado.ente, estado.cidade, p0.dias, p0.modo, {
+            fracionado: true,
+            diasEspeciaisDisponiveis: estado.usaEspeciais ? estado.diasEspeciais : 0
+          });
+          const recalculado = listaSemDuplo.find((s) => +s.inicioFerias === +p0.sugestao.inicioFerias);
+          if (recalculado) p0.sugestao = recalculado;
+        }
         estado.etapa = 2;
         estado.dias = dias;
         estado.modo = "corridas";        // recomeça no modo padrão para a nova etapa
@@ -710,12 +815,44 @@ const App = (function () {
         const classe = classeDoDia(dt, k, { mapa, setFerias, setAbonada, setDoacao, setEspecial, setMeio, ini, fim });
         const cel = el("span", "mini-dia " + classe, String(dia));
         const titulo = tituloDoDia(dt, k, mapa, setFerias, setAbonada, setDoacao, setEspecial);
-        if (titulo) cel.title = titulo;
+        if (titulo) {
+          cel.title = titulo;
+          cel.setAttribute("aria-label", `${dia} de ${nomeMesExtenso(mes)}: ${titulo}`);
+          cel.tabIndex = 0;
+          cel.addEventListener("click", () => {
+            alert(`${dia} de ${nomeMesExtenso(mes)}:\n${titulo}`);
+          });
+        }
         grid.appendChild(cel);
       }
       bloco.appendChild(grid);
       wrap.appendChild(bloco);
     });
+
+    // M10 / B3: Lista nominal de feriados do período para impressão e mobile
+    const feriadosPeriodo = [];
+    const jaVistos = new Set();
+    meses.forEach((mref) => {
+      const ano = mref.getFullYear(), mes = mref.getMonth();
+      const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+      for (let dia = 1; dia <= diasNoMes; dia++) {
+        const dt = new Date(ano, mes, dia);
+        const k = H.iso(dt);
+        if (mapa[k] && !jaVistos.has(k)) {
+          jaVistos.add(k);
+          feriadosPeriodo.push({ data: k, nome: mapa[k].nome });
+        }
+      }
+    });
+    if (feriadosPeriodo.length) {
+      const listaFeriados = el("div", "mini-feriados-lista");
+      listaFeriados.innerHTML = `<strong>Feriados/pontes no mês:</strong> ` +
+        feriadosPeriodo.map((f) => {
+          const partes = f.data.split("-");
+          return `${partes[2]}/${H.MESES[Number(partes[1]) - 1]} (${escapeHtml(f.nome)})`;
+        }).join(" · ");
+      wrap.appendChild(listaFeriados);
+    }
 
     const leg = el("div", "mini-legenda");
     leg.innerHTML =

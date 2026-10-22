@@ -48,7 +48,6 @@ body {
   margin: 0;
   font-family: var(--fonte);
   background: linear-gradient(165deg, #e6f1fd 0%, #f4f6f9 55%, #eef3f8 100%);
-  background-attachment: fixed;
   color: var(--texto);
   line-height: 1.55;
   min-height: 100vh;
@@ -362,16 +361,15 @@ h2 {
   cursor: default;
 }
 .mini-dia.vazio { background: transparent; }
-.mini-dia.fora { background: #fff; color: #c3ccd4; }
-.mini-dia.fds-fora { background: #fafbfc; color: #d2dae1; }
-/* feriados/pontes FORA do bloco escolhido: versão suave + borda tracejada,
-   sinalizam oportunidades de emenda vizinhas (ex.: um feriado logo ao lado). */
-.mini-dia.feriado-fora { background: #e8f5e9; color: #66bb6a; border: 1px dashed #a5d6a7; }
-.mini-dia.ponte-fora   { background: #e1f5fe; color: #4fc3f7; border: 1px dashed #81d4fa; }
-.mini-dia.meio-fora    { background: #efebe9; color: #a1887f; border: 1px dashed #bcaaa4; }
+.mini-dia.fora { background: #fff; color: #64748b; }
+.mini-dia.fds-fora { background: #fafbfc; color: #64748b; }
+/* feriados/pontes FORA do bloco escolhido: versão suave + borda tracejada e alto contraste WCAG AA (A7) */
+.mini-dia.feriado-fora { background: #e8f5e9; color: #1b5e20; border: 1px dashed #a5d6a7; }
+.mini-dia.ponte-fora   { background: #e1f5fe; color: #01579b; border: 1px dashed #81d4fa; }
+.mini-dia.meio-fora    { background: #efebe9; color: #4e342e; border: 1px dashed #bcaaa4; }
 
 /* dentro do bloco */
-.mini-dia.fds       { background: #e8edf2; color: #78909c; }
+.mini-dia.fds       { background: #e8edf2; color: #455a64; }
 .mini-dia.util-dentro { background: #eceff1; color: #546e7a; }
 .mini-dia.ponte     { background: #b3e5fc; color: #01579b; font-weight: 700; }
 .mini-dia.feriado   { background: #c8e6c9; color: #1b5e20; font-weight: 700; }
@@ -573,13 +571,18 @@ h2 {
   background: rgba(255, 255, 255, 0.18);
   border: none;
   color: #fff;
-  width: 22px;
-  height: 22px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 0.8rem;
+  font-size: 1rem;
   line-height: 1;
   padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .dev-contador-fechar:hover { background: rgba(255, 255, 255, 0.35); }
 
@@ -649,12 +652,17 @@ h2 {
 .feedback-fechar {
   background: #eef3f8;
   border: none;
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   border-radius: 50%;
   cursor: pointer;
-  font-size: 1rem;
+  font-size: 1.15rem;
   color: var(--cinza-texto);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .feedback-fechar:hover { background: #dde7f0; color: var(--azul-escuro); }
 .feedback-ajuda { margin: 12px 18px 0; color: var(--cinza-texto); font-size: 0.92rem; }
@@ -785,3 +793,52 @@ h2 {
 @media print {
   .btn-pix, #pix-modal { display: none !important; }
 }
+
+/* Lista nominal de feriados do período para impressão e mobile (M10, B3) */
+.mini-feriados-lista {
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: var(--cinza-texto);
+  line-height: 1.45;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #e2e8f0;
+}
+.mini-feriados-lista strong {
+  color: var(--azul-escuro);
+}
+
+/* Seletor de ano dinâmico (A5) */
+.seletor-ano-wrap {
+  display: inline-block;
+  margin-left: 6px;
+}
+.btn-seletor-ano {
+  background: none;
+  border: 1px solid var(--azul);
+  color: var(--azul);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-seletor-ano:hover {
+  background: var(--azul-claro);
+}
+.seletor-ano-ativo {
+  color: var(--azul-escuro);
+  font-weight: 800;
+}
+
+/* Redução de movimento respeitando preferência do SO (B8) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

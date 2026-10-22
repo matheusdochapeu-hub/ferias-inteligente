@@ -29,10 +29,9 @@
     base: "https://abacus.jasoncameron.dev",
     namespace: "ferias-inteligente-mrr", // identificador do app no serviço
     key: "acessos",                      // nome do contador
-    senhaDev: "67086719",                // chave para revelar o painel (só ofuscação!)
-    paramDev: "dev",                     // ?dev=<senha> ativa o modo dev
-    sequenciaAtalho: "dev",              // digitar isso (fora de inputs) pede a senha
-    CONTAR_UMA_VEZ_POR_DIA: false        // true = no máx. 1 visita/navegador/dia
+    paramDev: "dev",                     // ?dev na URL ativa o modo dev
+    sequenciaAtalho: "dev",              // digitar isso (fora de inputs e modais) exibe o painel
+    CONTAR_UMA_VEZ_POR_DIA: true         // true = no máx. 1 visita/navegador/dia (A9)
   };
 
   // --------- Utilidades ---------
@@ -42,6 +41,12 @@
 
   // Decide se esta visita deve incrementar (hit) ou apenas ler (get).
   function deveContar() {
+    // Ignora desenvolvimento local para não poluir contagem (A9)
+    try {
+      const host = window.location.hostname;
+      if (host === "localhost" || host === "127.0.0.1" || host === "::1" || !host) return false;
+    } catch (_) {}
+
     if (!CFG.CONTAR_UMA_VEZ_POR_DIA) return true;
     try {
       const hoje = new Date().toISOString().slice(0, 10); // AAAA-MM-DD
@@ -77,7 +82,7 @@
   function modoDevAtivo() {
     try {
       const p = new URLSearchParams(window.location.search);
-      return p.get(CFG.paramDev) === CFG.senhaDev;
+      return p.has(CFG.paramDev) || window.location.hash === "#dev";
     } catch (_) {
       return false;
     }
@@ -114,10 +119,13 @@
     }
   }
 
-  // --------- Atalho de teclado (digitar a sequência -> pedir senha) ---------
+  // --------- Atalho de teclado (digitar a sequência -> abrir painel) ---------
   function instalarAtalho() {
     let buffer = "";
     document.addEventListener("keydown", (e) => {
+      // M9: ignora atalho quando algum modal estiver aberto
+      if (document.querySelector('.feedback-modal:not([hidden])')) return;
+
       // ignora quando o foco está num campo de texto
       const tag = (e.target && e.target.tagName) || "";
       if (tag === "INPUT" || tag === "TEXTAREA" || (e.target && e.target.isContentEditable)) return;
@@ -125,9 +133,7 @@
         buffer = (buffer + e.key.toLowerCase()).slice(-CFG.sequenciaAtalho.length);
         if (buffer === CFG.sequenciaAtalho) {
           buffer = "";
-          const tentativa = window.prompt("Senha de desenvolvedor:");
-          if (tentativa === CFG.senhaDev) abrirPainel();
-          else if (tentativa !== null) window.alert("Senha incorreta.");
+          abrirPainel();
         }
       }
     });

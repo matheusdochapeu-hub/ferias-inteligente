@@ -22,7 +22,7 @@
  * ===========================================================================*/
 "use strict";
 
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const CACHE_SHELL = `ferias-shell-${CACHE_VERSION}`;
 const CACHE_DADOS = `ferias-dados-${CACHE_VERSION}`;
 
@@ -30,9 +30,8 @@ const CACHE_DADOS = `ferias-dados-${CACHE_VERSION}`;
 const base = new URL("./", self.registration ? self.registration.scope : self.location.href);
 const u = (p) => new URL(p, base).toString();
 
-// App shell: tudo que o app precisa para abrir e rodar offline.
+// App shell: tudo que o app precisa para abrir e rodar offline (sem duplicar ./ e index.html - B13).
 const PRECACHE = [
-  "./",
   "index.html",
   "css/estilo.css",
   "js/motor.js",
@@ -134,12 +133,13 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Dados de feriados -> stale-while-revalidate (atualiza em background).
-  if (url.pathname.includes("/data/") && url.pathname.endsWith(".json")) {
+  // Dados de feriados e assets de código (JS/CSS) -> stale-while-revalidate (A10: atualiza em background sem prender versões antigas).
+  if ((url.pathname.includes("/data/") && url.pathname.endsWith(".json")) ||
+      url.pathname.endsWith(".js") || url.pathname.endsWith(".css")) {
     event.respondWith(staleWhileRevalidate(req));
     return;
   }
 
-  // Demais assets do shell -> cache-first.
+  // Demais assets do shell (ícones, manifest, etc.) -> cache-first.
   event.respondWith(cacheFirst(req));
 });

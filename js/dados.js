@@ -107,12 +107,22 @@
     window.ANO_ATIVO = ano; // o motor e a UI leem este ano dinâmico
   }
 
+  function escapeHtml(s) {
+    if (s === null || s === undefined) return "";
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   function mostrarErro(msg) {
     const orgao = document.getElementById("tela-orgao");
     const aviso = document.createElement("div");
     aviso.className = "info-box info-box-amarelo";
     aviso.innerHTML =
-      "⚠️ " + msg + "<br><small>Se você abriu o arquivo direto do computador " +
+      "⚠️ " + escapeHtml(msg) + "<br><small>Se você abriu o arquivo direto do computador " +
       "(file://), use o site publicado ou rode um servidor local " +
       "(ex.: <code>python3 -m http.server</code>).</small>";
     if (orgao) orgao.insertBefore(aviso, orgao.firstChild);
@@ -130,15 +140,66 @@
     ]).then(([nacionais, pmrp, usp, limeira]) => ({ ano, entesDoc, nacionais, pmrp, usp, limeira }));
   }
 
+  let _entesDocCache = null;
+  let _anosDisponiveis = [];
+
+  // A5: Seletor de ano quando index.json possuir mais de 1 ano
+  function renderSeletorAno(anos, anoAtivo) {
+    if (!anos || anos.length <= 1) return;
+    let wrap = document.getElementById("seletor-ano-wrap");
+    if (!wrap) {
+      const subtitulo = document.querySelector(".subtitulo");
+      if (subtitulo) {
+        wrap = document.createElement("span");
+        wrap.id = "seletor-ano-wrap";
+        wrap.className = "seletor-ano-wrap";
+        subtitulo.appendChild(wrap);
+      }
+    }
+    if (!wrap) return;
+    wrap.innerHTML = " · Ano: " + anos.map((a) => {
+      if (a === anoAtivo) {
+        return `<strong class="seletor-ano-ativo">${a}</strong>`;
+      }
+      return `<button type="button" class="btn-seletor-ano" data-ano="${a}">${a}</button>`;
+    }).join(" | ");
+
+    wrap.querySelectorAll(".btn-seletor-ano").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const novoAno = Number(btn.getAttribute("data-ano"));
+        trocarAno(novoAno);
+      });
+    });
+  }
+
+  function trocarAno(novoAno) {
+    if (!_entesDocCache) return;
+    carregarAno(novoAno, _entesDocCache)
+      .then(({ ano, entesDoc, nacionais, pmrp, usp, limeira }) => {
+        montarCalendarios(ano, entesDoc, nacionais, pmrp, usp, limeira);
+        renderSeletorAno(_anosDisponiveis, ano);
+        if (window.App && typeof window.App.iniciar === "function") {
+          window.App.iniciar();
+        }
+      })
+      .catch((err) => {
+        console.error("[dados] erro ao trocar de ano:", err);
+        mostrarErro(`Não foi possível carregar os dados de ${novoAno}.`);
+      });
+  }
+
   function iniciar() {
-    // 1) lê o índice; 2) escolhe o ano a exibir pela regra; 3) tenta carregar os
-    // JSON desse ano e, se faltar algum (índice e arquivos divergentes), cai para
-    // o PRÓXIMO maior ano cujos arquivos existam — em vez de derrubar o app.
-    carregarJSON("data/feriados/index.json")
-      .then((indice) => {
+    // M13: paraleliza index.json e entes.json em uma única rodada (reduz para 2 RTTs)
+    Promise.all([
+      carregarJSON("data/feriados/index.json"),
+      carregarJSON("data/entes.json")
+    ])
+      .then(([indice, entesDoc]) => {
+        _entesDocCache = entesDoc;
         const anos = (indice && Array.isArray(indice.anos) && indice.anos.length)
           ? indice.anos.slice()
           : [new Date().getFullYear()];
+        _anosDisponiveis = anos.slice().sort((a, b) => a - b);
         const alvo = escolherAno(anos, new Date());
 
         // ordem de tentativa: o ano escolhido primeiro, depois os demais do maior
@@ -147,16 +208,15 @@
           anos.slice().sort((a, b) => b - a).filter((a) => a !== alvo)
         );
 
-        return carregarJSON("data/entes.json").then((entesDoc) => {
-          // tenta cada candidato em sequência até um carregar por completo
-          return candidatos.reduce(
-            (promessa, ano) => promessa.catch(() => carregarAno(ano, entesDoc)),
-            Promise.reject() // começa rejeitado para a 1ª tentativa rodar no catch
-          );
-        });
+        // tenta cada candidato em sequência até um carregar por completo
+        return candidatos.reduce(
+          (promessa, ano) => promessa.catch(() => carregarAno(ano, entesDoc)),
+          Promise.reject() // começa rejeitado para a 1ª tentativa rodar no catch
+        );
       })
       .then(({ ano, entesDoc, nacionais, pmrp, usp, limeira }) => {
         montarCalendarios(ano, entesDoc, nacionais, pmrp, usp, limeira);
+        renderSeletorAno(_anosDisponiveis, ano);
         if (window.App && typeof window.App.iniciar === "function") {
           window.App.iniciar();
         }

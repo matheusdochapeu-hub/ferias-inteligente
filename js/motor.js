@@ -2,9 +2,9 @@
  * MOTOR DE CÁLCULO DE FÉRIAS E EMENDAS
  * -----------------------------------------------------------------------------
  * Independente de interface. Recebe:
- *   - enteId: "pmrp" | "usp"
+ *   - enteId: "pmrp" | "usp" | "limeira"
  *   - cidade: (apenas USP) nome da cidade
- *   - diasFerias: 10 | 15 | 20 | 30
+ *   - diasFerias: 0 | 5 | 10 | 15 | 20 | 30
  *   - modo: "corridas" | "abonadas" | "abonadas_sem_doacao" | "doacao"
  * E produz uma lista ordenada (melhor -> pior) de sugestões.
  *
@@ -52,13 +52,16 @@ const Motor = (function () {
 
   const DIAS_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
   const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
-  function fmt(dt) { return `${String(dt.getDate()).padStart(2, "0")}/${MESES[dt.getMonth()]}`; }
+  function fmt(dt) {
+    const base = `${String(dt.getDate()).padStart(2, "0")}/${MESES[dt.getMonth()]}`;
+    return dt.getFullYear() !== Number(window.ANO_ATIVO) ? `${base}/${dt.getFullYear()}` : base;
+  }
   function fmtExt(dt) { return `${DIAS_SEMANA[dt.getDay()]}, ${fmt(dt)}`; }
 
   function prioridadeTipo(t) { return t === "feriado" ? 3 : t === "facultativo" ? 2 : t === "meio" ? 1 : 0; }
 
   /* Monta o mapa de dias especiais do ano para o ente/cidade selecionados.
-   * Retorna { "AAAA-MM-DD": { nome, tipo } }. */
+   * Retorna { "AAAA-MM-DD": { nome, tipo, previsao } }. */
   function montarCalendario(enteId, cidade) {
     const C = window.CALENDARIOS[window.ANO_ATIVO];
     const mapa = {};
@@ -66,10 +69,11 @@ const Motor = (function () {
     // que a versão local/"previsão" prevaleça sobre a nacional genérica).
     const add = (lista) => (lista || []).forEach((e) => {
       const atual = mapa[e.data];
+      const obj = { nome: e.nome, tipo: e.tipo, previsao: !!e.previsao };
       if (!atual || prioridadeTipo(e.tipo) > prioridadeTipo(atual.tipo)) {
-        mapa[e.data] = { nome: e.nome, tipo: e.tipo };
+        mapa[e.data] = obj;
       } else if (prioridadeTipo(e.tipo) === prioridadeTipo(atual.tipo)) {
-        mapa[e.data] = { nome: e.nome, tipo: e.tipo }; // mesma prioridade: fonte mais específica vence
+        mapa[e.data] = obj; // mesma prioridade: fonte mais específica vence
       }
     });
 
@@ -87,6 +91,16 @@ const Motor = (function () {
       add(ente.facultativosGerais);
       if (cidade && ente.cidades[cidade]) add(ente.cidades[cidade]);
     }
+
+    // Fronteira de ano (C2): reconhecer dias adjacentes em dez/(ano-1) e jan/(ano+1)
+    const anoNum = Number(window.ANO_ATIVO);
+    mapa[`${anoNum + 1}-01-01`] = { nome: "Confraternização Universal", tipo: "feriado" };
+    if (enteId === "usp") {
+      mapa[`${anoNum - 1}-12-31`] = { nome: "Recesso de fim de ano (USP)", tipo: "feriado" };
+    } else {
+      mapa[`${anoNum - 1}-12-31`] = { nome: "Véspera de Ano-Novo (ponto facultativo)", tipo: "facultativo" };
+    }
+
     return mapa;
   }
 
@@ -151,7 +165,6 @@ const Motor = (function () {
       doacoes: [],
       diasEspeciais: [],
       meiosPeriodo: [],
-      pontesAproveitadas: [],
       detalhesEmenda: [],
       feriadosDesperdicados: 0,
       semFerias: semFerias
@@ -181,14 +194,13 @@ const Motor = (function () {
     // Expande as pontas por dias "livres" (folga + facultativo).
     expandirLivres(res, mapa);
 
-    // Registra as emendas de ponta (feriados/facultativos em dia útil colados),
-    // SEM contar fim de semana como mérito.
-    registrarEmendasPonta(res, res.blocoInicio, res.blocoFim, mapa);
-
     // Aplica recursos (dias especiais / abonada / doação) para furar dias úteis.
     if (cfg.usarAbonadas || cfg.usarDoacao || cfg.usarDiasEspeciais) {
       aplicarRecursos(res, mapa, cfg, r);
     }
+
+    // Registra as emendas do bloco inteiro APÓS expandir e aplicar recursos (C1, A2)
+    registrarEmendasBloco(res, mapa);
 
     res.totalDescanso = diffDias(res.blocoInicio, res.blocoFim) + 1;
     res.totalAbonadas = res.abonadas.length;
@@ -206,20 +218,21 @@ const Motor = (function () {
     while (ehLivre(cursor, mapa)) { res.blocoInicio = new Date(cursor); cursor = addDias(cursor, -1); }
   }
 
-  function registrarEmendasPonta(res, inicio, fimFerias, mapa) {
-    // dias livres imediatamente antes do início das férias
-    let cursor = addDias(inicio, -1);
-    while (ehLivre(cursor, mapa)) {
-      const c = classificar(cursor, mapa);
-      if (!ehFimDeSemana(cursor)) res.detalhesEmenda.unshift({ dt: new Date(cursor), motivo: c.motivo });
-      cursor = addDias(cursor, -1);
+  function registrarEmendasBloco(res, mapa) {
+    res.detalhesEmenda = [];
+    res.meiosPeriodo = [];
+    for (let d = new Date(res.blocoInicio); d <= res.blocoFim; d = addDias(d, 1)) {
+      const dentroFerias = !res.semFerias && d >= res.inicioFerias && d <= res.fimFerias;
+      if (dentroFerias || ehFimDeSemana(d)) continue;
+      const c = classificar(d, mapa);
+      if (c.estado === "folga" || c.estado === "facultativo") {
+        res.detalhesEmenda.push({ dt: new Date(d), motivo: c.motivo });
+      }
     }
-    // dias livres imediatamente depois do fim das férias
-    cursor = addDias(fimFerias, 1);
-    while (ehLivre(cursor, mapa)) {
-      const c = classificar(cursor, mapa);
-      if (!ehFimDeSemana(cursor)) res.detalhesEmenda.push({ dt: new Date(cursor), motivo: c.motivo });
-      cursor = addDias(cursor, 1);
+    // Aviso de meio período só quando imediatamente colado à borda do bloco final (A2)
+    for (const borda of [addDias(res.blocoInicio, -1), addDias(res.blocoFim, 1)]) {
+      const cb = classificar(borda, mapa);
+      if (cb.estado === "meio") res.meiosPeriodo.push({ dt: new Date(borda), motivo: cb.motivo });
     }
   }
 
@@ -279,13 +292,14 @@ const Motor = (function () {
       return false;
     }
 
-    // tenta reservar um recurso para "comprar" o dia útil.
+    // tenta reservar um recurso para "comprar" o dia útil ou de meio período.
     // PRIORIDADE: dias especiais (banco/TRE) -> abonada -> doação.
     function reservar(dia) {
+      if (dia.getFullYear() !== Number(window.ANO_ATIVO)) return null; // não gastar cota de outro ano (C2)
       // 1º) dia especial (banco de horas / folga TRE): preferência máxima.
       // Banco de horas / folgas TRE SÓ podem ser usados em dias de semana
       // (segunda a sexta) — nunca em sábado/domingo. Trava explícita: os
-      // chamadores já só passam dias "util" (que excluem FDS), mas garantimos
+      // chamadores já só passam dias "util"/"meio" (que excluem FDS), mas garantimos
       // aqui para que a invariante não dependa de quem chama.
       if (cfg.usarDiasEspeciais && diasEspeciaisRestantes > 0 && !ehFimDeSemana(dia)) {
         diasEspeciaisRestantes--;
@@ -312,32 +326,22 @@ const Motor = (function () {
     }
 
     function tentar(direcao) {
-      // Caminha a partir da ponta somando dias úteis "candidatos" a compra.
+      // Caminha a partir da ponta somando dias úteis / meio período "candidatos" a compra.
       // Quando encontra um dia livre, confirma a compra de todos os candidatos
       // acumulados até ali (ponte fechada) e segue incorporando os livres.
       let cursor = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
-      let candidatos = [];        // dias úteis ainda não confirmados nesta ponta
+      let candidatos = [];        // dias úteis/meios ainda não confirmados nesta ponta
       const MAX_UTEIS_PONTE = 3;  // limite de dias úteis "furados" por ponte
 
       while (true) {
         const c = classificar(cursor, mapa);
 
-        if (c.estado === "util") {
+        // A2: permite comprar dias "util" e "meio" (como Quarta de Cinzas) com recursos
+        if (c.estado === "util" || c.estado === "meio") {
           if (candidatos.length >= MAX_UTEIS_PONTE) break;
           candidatos.push(new Date(cursor));
           cursor = addDias(cursor, direcao);
           continue;
-        }
-
-        if (c.estado === "meio") {
-          // Meio período (ex.: Quarta de Cinzas na PMRP/Limeira): o expediente é
-          // reduzido, mas o servidor PRECISA comparecer — portanto NÃO gera emenda
-          // e ENCERRA a ponte (não dá para "atravessar" o meio dia como se fosse
-          // livre). Registramos só para a nota textual; candidatos pendentes desta
-          // ponta são descartados (não há dia livre fechando a ponte). Na USP a
-          // Quarta de Cinzas é feriado cheio, então nunca cai neste ramo.
-          res.meiosPeriodo.push({ dt: new Date(cursor), motivo: c.motivo });
-          break;
         }
 
         if (c.estado === "folga" || c.estado === "facultativo") {
@@ -355,6 +359,18 @@ const Motor = (function () {
               desfazer(reservasFeitas, abonadasPorMes);
               break;
             }
+            // M1: Distinguir emenda em feriado/facultativo de conexão com FDS comum
+            const proximoLivre = classificar(cursor, mapa);
+            const ehFeriadoPonte = (proximoLivre.estado === "folga" && !ehFimDeSemana(cursor)) || proximoLivre.estado === "facultativo";
+            reservasFeitas.forEach(({ dia, tipo }) => {
+              if (tipo === "abonada") {
+                const ab = res.abonadas.find((a) => +a.dt === +dia);
+                if (ab) ab.motivo = ehFeriadoPonte ? "Abonada (emenda de feriado)" : "Abonada (ponte fim de semana)";
+              } else if (tipo === "doacao") {
+                const dc = res.doacoes.find((d) => +d.dt === +dia);
+                if (dc) dc.motivo = ehFeriadoPonte ? "Doação de sangue (emenda de feriado)" : "Doação de sangue (ponte fim de semana)";
+              }
+            });
             candidatos = []; // confirmados; continuam contando como parte do bloco
           }
           // incorpora o dia livre e segue (pode haver mais pontes adiante)
@@ -406,10 +422,10 @@ const Motor = (function () {
       const MAX_ALCANCE = 4; // até 4 dias úteis entre o bloco e a ilha
       let cursor = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
       const uteis = [];
-      // acumula dias úteis consecutivos; para ao encontrar o 1º dia livre (a ilha)
+      // acumula dias úteis/meios consecutivos; para ao encontrar o 1º dia livre (a ilha)
       for (let i = 0; i < MAX_ALCANCE; i++) {
         const c = classificar(cursor, mapa);
-        if (c.estado === "util") { uteis.push(new Date(cursor)); cursor = addDias(cursor, direcao); }
+        if (c.estado === "util" || c.estado === "meio") { uteis.push(new Date(cursor)); cursor = addDias(cursor, direcao); }
         else break;
       }
       if (!uteis.length) return;
@@ -467,14 +483,14 @@ const Motor = (function () {
     // nem teto anual — só o saldo informado pelo usuário. Pode furar pontes de
     // mais de um dia útil (consome 1 dia especial por dia útil).
     function colarDiasEspeciaisNaPonta(direcao) {
-      const MAX = 6; // segurança: no máx. 6 dias úteis seguidos por ponta
+      const MAX = 30; // sem limitação arbitrária de 6 por ponta (A6)
       for (let i = 0; i < MAX; i++) {
         if (diasEspeciaisRestantes <= 0) break;
         const alvo = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
         const c = classificar(alvo, mapa);
         // ponta já livre: recomputarBloco já cobriu. Além disso, banco/TRE só
-        // em dia de semana (estado "util" já exclui FDS; redundância defensiva).
-        if (c.estado !== "util" || ehFimDeSemana(alvo)) break;
+        // em dia de semana (estado "util" e "meio" já excluem FDS; redundância defensiva).
+        if ((c.estado !== "util" && c.estado !== "meio") || ehFimDeSemana(alvo)) break;
 
         const descAntes = diffDias(res.blocoInicio, res.blocoFim) + 1;
         const salvoIni = new Date(res.blocoInicio), salvoFim = new Date(res.blocoFim);
@@ -503,24 +519,11 @@ const Motor = (function () {
     // abonada só é colada na ponta como dia avulso quando NÃO foi necessária
     // para uma emenda naquele mês.
     function colarAbonadasNaPonta(direcao) {
-      // A abonada é colada no 1º dia útil de cada ponta porque ela SEMPRE encosta
-      // no bloco de descanso (que já inclui fins de semana, feriados e pontes).
-      // Como sábado/domingo CONTAM como descanso, uma abonada numa sexta/segunda
-      // (ou véspera de bloco) puxa esses dias livres junto — por isso quase sempre
-      // rende bem mais que o próprio dia. No pior caso (bloco cercado de dias
-      // úteis dos dois lados), rende ao menos +1 dia colado às férias, o que o
-      // servidor quer. Só paramos quando não há mais dia útil na ponta, acabou o
-      // saldo do mês (regra 1/mês), ou estouraria o teto anual de 6.
-      //
-      // Avaliamos o GANHO LÍQUIDO antes de confirmar: compramos o dia útil-alvo
-      // e, se o resultado (após recomputarBloco) aumentar o total de descanso em
-      // pelo menos 1, mantemos; senão desfazemos (segurança — na prática sempre
-      // ganha, pois o dia comprado já é um dia de folga a mais no bloco).
       const MAX = 2; // no máx. 2 compras por direção (ex.: furar 1 ponte curta)
       for (let i = 0; i < MAX; i++) {
         const alvo = direcao === 1 ? addDias(res.blocoFim, 1) : addDias(res.blocoInicio, -1);
         const c = classificar(alvo, mapa);
-        if (c.estado !== "util") break; // ponta já livre: recomputarBloco já cobriu
+        if (c.estado !== "util" && c.estado !== "meio") break; // ponta já livre: recomputarBloco já cobriu
         const mesKey = iso(alvo).slice(0, 7);
         // abonada disponível p/ aquele mês conforme as REGRAS DO ENTE (teto anual,
         // 1/mês ou cota de mês duplo), e mês não usado em outro período do plano.
@@ -561,8 +564,10 @@ const Motor = (function () {
     if (cfg.usarDoacao && res.doacoes.length === 0) {
       const depois = addDias(res.blocoFim, 1);
       const antes = addDias(res.blocoInicio, -1);
-      const podeDepois = classificar(depois, mapa).estado === "util" && doacaoPermitida(depois);
-      const podeAntes = classificar(antes, mapa).estado === "util" && doacaoPermitida(antes);
+      const podeDepois = (classificar(depois, mapa).estado === "util" || classificar(depois, mapa).estado === "meio")
+        && depois.getFullYear() === Number(window.ANO_ATIVO) && doacaoPermitida(depois);
+      const podeAntes = (classificar(antes, mapa).estado === "util" || classificar(antes, mapa).estado === "meio")
+        && antes.getFullYear() === Number(window.ANO_ATIVO) && doacaoPermitida(antes);
 
       // Preferimos a ponta que já encosta num fim de semana logo em seguida
       // (maior chance de "puxar" folga extra ao reexpandir); senão, qualquer uma.
@@ -613,7 +618,9 @@ const Motor = (function () {
       + (res.diasEspeciais ? res.diasEspeciais.length : 0);
     const razao = diasGastos > 0 ? res.totalDescanso / diasGastos : res.totalDescanso;
     const bonusEmenda = res.detalhesEmenda.length * 1.0; // só feriados/facult. em dia útil
-    const penalidade = res.feriadosDesperdicados * 1.5;  // feriado dentro das férias = jogado fora
+    // M3: penalidade progressiva para feriados desperdiçados acima de 3 dias (evita engolir o recesso)
+    const fatorPenalidade = res.feriadosDesperdicados > 3 ? 3.0 : 1.5;
+    const penalidade = res.feriadosDesperdicados * fatorPenalidade;
     // Pequeno desempate: quando as férias CRUZAM a virada de mês, cabem abonadas
     // em meses diferentes (uma em cada ponta) — o que rende mais descanso. Este
     // bônus é só de desempate (não premia gasto de recurso: duas opções de mesmo
@@ -643,6 +650,8 @@ const Motor = (function () {
    *                                       // que toquem qualquer um são descartadas.
    *     mesesAbonadaUsados: Set<"AAAA-MM">, // meses em que já há abonada marcada
    *     doacoesUsadas: [Date],            // doações já marcadas no plano
+   *     mesesPreferidos: [number],        // meses (0-11) para filtrar ANTES de deduplicar (A3)
+   *     respeitarCLT: boolean             // opcional: evita início 2 dias antes de feriado/DSR (M4)
    *   }
    */
   function calcular(enteId, cidade, diasFerias, modo, restricoes) {
@@ -674,7 +683,25 @@ const Motor = (function () {
       // garante que o bloco de férias caiba no ano (no modo só-folgas, basta 1 dia)
       if (!soFolgas && addDias(d, diasFerias - 1) > fimAno) break;
 
+      // M4: CLT art. 134 §3º (vedado início nos 2 dias que antecedem feriado ou DSR)
+      if (r.respeitarCLT) {
+        const prox1 = classificar(addDias(d, 1), mapa);
+        const prox2 = classificar(addDias(d, 2), mapa);
+        const f1 = prox1.estado === "folga" || prox1.estado === "facultativo";
+        const f2 = prox2.estado === "folga" || prox2.estado === "facultativo";
+        if (f1 || f2) continue;
+      }
+
+      // A3: Filtro de mês de preferência antes de deduplicar
+      if (r.mesesPreferidos && r.mesesPreferidos.length) {
+        if (!r.mesesPreferidos.includes(d.getMonth())) continue;
+      }
+
       const sug = avaliarInicio(d, diasFerias, mapa, modo, r);
+      // M3: descartar opções de férias que desperdiçam metade ou mais das férias sobre feriados/recesso
+      if (!soFolgas && diasFerias >= 10 && sug.feriadosDesperdicados >= Math.ceil(diasFerias * 0.5)) {
+        continue;
+      }
       // No modo só-folgas, descarta sugestões que não conseguiram usar nenhum
       // dia especial (seriam só um dia útil solto, sem valor).
       if (soFolgas && sug.diasEspeciais.length === 0) continue;
@@ -702,6 +729,8 @@ const Motor = (function () {
         if (custoRecursos(sug) < custoRecursos(unicos[i])) unicos[i] = sug;
       }
     }
+    // A3: Reordenar após a deduplicação
+    unicos.sort((a, b) => b.pontuacao - a.pontuacao);
     return unicos;
   }
 

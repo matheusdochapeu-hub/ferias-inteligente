@@ -17,9 +17,9 @@ e **emendar feriados** para:
 O app tem um fluxo de **6 telas**: órgão → (cidade, se USP) → dias → preferência de mês →
 resultados → (decisão de 2º período) → plano final.
 
-1. **Órgão:** escolha PMRP ou USP — sem precisar se identificar.
+1. **Órgão:** escolha USP, PMRP ou Limeira — sem precisar se identificar.
 2. **USP:** escolha a cidade da sua unidade (os feriados municipais mudam por cidade).
-3. **Dias de férias:** 10, 15, 20 ou 30 dias — e **5 dias** (exclusivo da USP, que pode vender 10).
+3. **Dias de férias:** 10, 15, 20 ou 30 dias — e **5 dias** (exclusivo da USP, que pode vender 10), além da opção de **0 dias** para planejar folgas puras de banco de horas / TRE.
 4. **Preferência de mês:** opcional, para que as sugestões comecem nos meses escolhidos.
 5. **Resultados** em **quatro modos** (abas), listados da **melhor para a pior** opção,
    cada sugestão com um **minicalendário visual**:
@@ -30,40 +30,44 @@ resultados → (decisão de 2º período) → plano final.
 6. **Decisão / plano final:** escolhido o 1º período, o app pode oferecer um 2º período
    (fracionamento) e monta o plano final com resumo e opção de **imprimir/PDF**.
 
-   > As abonadas são do saldo anual do servidor (6/ano, 1 por mês) e a doação de sangue é
+   > As abonadas são do saldo anual do servidor (6/ano na USP/PMRP, 12/ano em Limeira) e a doação de sangue é
    > possível 1 vez a cada 3 meses. Cada sugestão é um cenário independente de quando tirar
-   > as férias; o app respeita "1 abonada por mês" e "1 doação por janela" dentro de cada opção.
-   > No modo abonadas, o app também cola uma abonada em cada ponta das férias quando isso
-   > rende descanso real (fins de semana contam), favorecendo períodos que cruzam a virada
-   > de mês (onde cabem 2 abonadas, 1 por mês).
+   > as férias; o app respeita as regras estatutárias e limites dentro de cada período.
 
 Informações exibidas (apenas informativas):
 - **Pagamento:** PMRP recebe no 1º dia útil; USP no 4º dia útil, com férias pagas adiantadas.
-- **Quarta-feira de Cinzas:** na PMRP é meio período (emendável, não é feriado cheio); na USP
+- **Quarta-feira de Cinzas:** na PMRP e Limeira é meio período (emendável com recursos); na USP
   as atividades são suspensas (tratada como feriado).
 
 ## Estrutura do projeto
 
 ```
-index.html                        → página única com as 6 telas
-css/estilo.css                    → estilos
-js/motor.js                       → motor de cálculo (independente da interface)
-js/app.js                         → controle de telas e renderização
-js/dados.js                       → carregador: busca os JSON de feriados (fetch) e inicia o App
-js/feedback.js                    → modal "Fale com o desenvolvedor" (Google Forms embutido)
-js/pix.js                         → modal de doação via Pix (QR Code + copiar chave)
-js/vendor/qrcode.min.js           → gerador de QR Code (davidshimjs/qrcodejs, MIT, vendorizado)
-                                    (dias especiais / banco de horas / TRE vivem em js/motor.js + js/app.js)
-js/contador.js                    → contador de acessos (painel visível só p/ o dev)
-js/pwa.js                         → registra o service worker (instalação + offline)
-sw.js                             → service worker: cache do app shell e dos feriados (offline)
-manifest.webmanifest              → metadados de instalação do PWA (nome, ícones, cores)
-icons/                            → ícones do PWA (192/512 + maskable), gerados por script
-scripts/gerar-icones.js           → gera os PNG de ícone sem dependências externas
-data/entes.json                   → metadados dos entes (nome, esfera, pagamento) — sem datas
-data/feriados/nacionais-2027.json → feriados nacionais + facultativos nacionais
-data/feriados/pmrp-2027.json      → feriados da PMRP (2027)
-data/feriados/usp-2027.json       → feriados da USP, com as cidades (2027)
+index.html                              → página única com as 6 telas
+package.json                            → scripts Node e metadados do projeto
+robots.txt                              → diretrizes para robôs de busca
+favicon.ico                             → favicon para navegadores
+css/estilo.css                          → estilos e design tokens (com acessibilidade WCAG AA)
+js/motor.js                             → motor de cálculo (independente da interface)
+js/moveis.js                            → cálculo astronômico/local de feriados móveis (Meeus)
+js/app.js                               → controle de telas, histórico e renderização
+js/dados.js                             → carregador: busca os JSON de feriados e metadados
+js/feedback.js                          → modal "Fale com o desenvolvedor" (Google Forms)
+js/pix.js                               → modal de doação via Pix (QR Code + copiar chave)
+js/vendor/qrcode.min.js                 → gerador de QR Code (MIT, vendorizado)
+js/contador.js                          → contador de acessos (painel opcional para dev)
+js/pwa.js                               → registra o service worker (instalação + offline)
+sw.js                                   → service worker com suporte offline resiliente
+manifest.webmanifest                    → metadados de instalação do PWA
+icons/                                  → ícones do PWA (192/512 + maskable)
+scripts/gerar-icones.js                 → gera os PNG de ícone sem dependências
+scripts/gerar-ano.js                    → automação: gera rascunho de feriados do próximo ano
+data/entes.json                         → metadados dos entes e regras de abonadas
+data/feriados/index.json                → catálogo dos anos disponíveis
+data/feriados/nacionais-2027.json       → feriados e facultativos nacionais
+data/feriados/pmrp-2027.json            → feriados da PMRP (2027)
+data/feriados/limeira-2027.json         → feriados de Limeira (2027)
+data/feriados/usp-2027.json             → feriados da USP, com 22 cidades (2027)
+.github/workflows/gerar-proximo-ano.yml → automação anual agendada via GitHub Actions
 ```
 
 > **Dados em JSON puro.** Desde a refatoração, os feriados vivem em arquivos **JSON**

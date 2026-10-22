@@ -67,10 +67,25 @@ jobs:
           echo "molde=$MOLDE" >> "$GITHUB_OUTPUT"
           echo "rodada=$RODADA" >> "$GITHUB_OUTPUT"
 
+      - name: Checkout branch existente se for 2ª rodada
+        run: |
+          ALVO="${{ steps.ctx.outputs.alvo }}"
+          git fetch origin "rascunho-feriados-${ALVO}" || true
+          if git checkout "rascunho-feriados-${ALVO}"; then
+            echo "Branch do PR rascunho-feriados-${ALVO} encontrada e carregada."
+          fi
+
       - name: Gerar rascunho do ano-alvo
         run: |
-          echo "Gerando ${{ steps.ctx.outputs.alvo }} a partir de ${{ steps.ctx.outputs.molde }} (${{ steps.ctx.outputs.rodada }})"
-          node scripts/gerar-ano.js --alvo "${{ steps.ctx.outputs.alvo }}" --molde "${{ steps.ctx.outputs.molde }}"
+          MOLDE="${{ steps.ctx.outputs.molde }}"
+          ALVO="${{ steps.ctx.outputs.alvo }}"
+          echo "Gerando $ALVO a partir de $MOLDE (${{ steps.ctx.outputs.rodada }})"
+          if [ ! -f "data/feriados/nacionais-${MOLDE}.json" ]; then
+            echo "Molde ${MOLDE} não encontrado em data/feriados; usando fallback com detectarUltimoAno()."
+            node scripts/gerar-ano.js --alvo "$ALVO"
+          else
+            node scripts/gerar-ano.js --alvo "$ALVO" --molde "$MOLDE"
+          fi
 
       - name: Conferência via BrasilAPI (nacionais) — apoio, não bloqueia
         continue-on-error: true

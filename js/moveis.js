@@ -18,7 +18,7 @@
  *     período na PMRP; a data de Cinzas também vai no campo "quartaDeCinzas").
  *   - Finados (02/11), Natal (25/12) etc. são FIXOS e não entram aqui.
  *
- * Uso (navegador):  Moveis.feriadosMoveis(2028)
+ * Uso (navegador):  Moveis.datasMoveisISO(2028)
  * Uso (Node/robô):  const Moveis = require("./js/moveis.js");
  * ===========================================================================*/
 (function (raiz, fabrica) {
@@ -123,6 +123,7 @@
     domingoDePascoa,
     datasMoveis,
     datasMoveisISO,
+    feriadosMoveis: datasMoveisISO, // alias de compatibilidade (M6)
     entradasParaJSON,
     // utilitários expostos para reuso/testes
     _util: { addDias, iso }

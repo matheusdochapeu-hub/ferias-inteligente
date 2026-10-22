@@ -37,6 +37,8 @@
           height: 220,
           correctLevel: QRCode.CorrectLevel.M
         });
+        const img = qrBox.querySelector("img");
+        if (img) img.setAttribute("alt", "QR Code Pix");
         qrGerado = true;
       } catch (e) {
         qrBox.innerHTML = '<p class="pix-qr-erro">Não foi possível gerar o QR Code. Use o botão "Copiar chave Pix" abaixo.</p>';

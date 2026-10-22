@@ -145,6 +145,7 @@ function replicarLista(lista, mapaMv, ano) {
     let dataNova;
     let nomeItem = item.nome;
     let ehMovel = false; // a data vem da fórmula (determinística)
+    const ehRecesso = /recesso/i.test(item.nome);
 
     if (mapaMv[item.data]) {
       // a própria data é um feriado móvel -> usa a data móvel do ano-alvo
@@ -172,7 +173,12 @@ function replicarLista(lista, mapaMv, ano) {
     // Facultativos/meio viram PREVISÃO (dependem de decreto/portaria) — EXCETO
     // quando a data é um feriado móvel conhecido (ex.: Quarta de Cinzas), que é
     // 100% determinística por fórmula e não precisa de conferência humana.
-    out.push(ehFacultativo(item.tipo) && !ehMovel ? comoPrevisao(novo) : novo);
+    // Recessos de fim de ano (ex.: USP) também dependem de portaria anual (C3):
+    if (ehRecesso) {
+      out.push(comoPrevisao(novo));
+    } else {
+      out.push(ehFacultativo(item.tipo) && !ehMovel ? comoPrevisao(novo) : novo);
+    }
   });
   return out;
 }
@@ -185,18 +191,19 @@ console.log(`\nGerando rascunho de ${ANO_ALVO} a partir do molde ${ANO_MOLDE}...
  * partir dele propagaria estimativas sobre estimativas. Recusamos — a menos que
  * o usuário force explicitamente com --permitir-molde-previsao. */
 function moldeTemPrevisao(ano) {
-  const arquivos = [`nacionais-${ano}.json`, `pmrp-${ano}.json`, `usp-${ano}.json`];
-  // Detecta previsão por QUALQUER das duas convenções do projeto:
-  //  - flag "previsao": true (gerada pelo próprio gerador), ou
-  //  - sufixo "— previsão" no nome (usado nos arquivos-semente de 2027).
-  const temPrevisao = (obj) => {
-    const txt = JSON.stringify(obj);
-    return txt.includes('"previsao":true') ||
-           txt.includes('"previsao": true') ||
-           /previs[ãa]o/i.test(txt);
+  const arquivos = [`nacionais-${ano}.json`, `pmrp-${ano}.json`, `limeira-${ano}.json`, `usp-${ano}.json`];
+  const itemTemPrevisao = (it) =>
+    Boolean(it && (it.previsao === true || /previs[ãa]o/i.test(it.nome || "")));
+  const docTemPrevisao = (obj) => {
+    const listas = [
+      obj.nacionais, obj.nacionaisFacultativos,
+      obj.feriadosLocais, obj.estaduais, obj.facultativosLocais, obj.facultativosGerais,
+      ...Object.values(obj.cidades || {})
+    ];
+    return listas.some((arr) => Array.isArray(arr) && arr.some(itemTemPrevisao));
   };
   return arquivos.some((a) => {
-    try { return temPrevisao(lerJSON(a)); } catch (_) { return false; }
+    try { return docTemPrevisao(lerJSON(a)); } catch (_) { return false; }
   });
 }
 if (!process.argv.includes("--permitir-molde-previsao") && moldeTemPrevisao(ANO_MOLDE)) {
@@ -226,16 +233,12 @@ const carnaval = [
   { data: mv.carnavalSegunda, nome: "Carnaval (ponto facultativo)", tipo: "facultativo", previsao: true },
   { data: mv.carnavalTerca,   nome: "Carnaval (ponto facultativo)", tipo: "facultativo", previsao: true }
 ];
-const outrosFacNac = (nacMolde.nacionaisFacultativos || [])
-  .filter((it) => !mapaMv[it.data] && !/carnaval/i.test(it.nome))
-  .map((it) => {
-    // Facultativos nacionais colados a um feriado MÓVEL (ex.: sexta pós-Corpus)
-    // devem ACOMPANHAR o móvel no ano-alvo, não só trocar o ano. Reusa a mesma
-    // heurística de deslocamento usada para os facultativos por ente.
-    const derivada = ajustarDerivadaDeMovel(it.data, ANO_MOLDE, ANO_ALVO);
-    const dataNova = derivada || trocaAno(it.data, ANO_ALVO);
-    return comoPrevisao({ data: dataNova, nome: it.nome, tipo: it.tipo });
-  });
+// M14: usar replicarLista para facultativos nacionais para sinalizar dia da semana em pontes fixas
+const outrosFacNac = replicarLista(
+  (nacMolde.nacionaisFacultativos || []).filter((it) => !mapaMv[it.data] && !/carnaval/i.test(it.nome)),
+  mapaMv,
+  ANO_ALVO
+);
 const nacionalDoc = {
   ano: ANO_ALVO,
   quartaDeCinzas: mv.quartaDeCinzas,

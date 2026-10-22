@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Férias Inteligente — Servidores Públicos</title>
-  <meta name="description" content="Descubra as melhores datas para tirar férias e fazer emendas de feriados — para servidores da Prefeitura de Ribeirão Preto e da USP." />
+  <meta name="description" content="Descubra as melhores datas para tirar férias e emendar feriados — servidores da USP e das Prefeituras de Ribeirão Preto e Limeira." />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://abacus.jasoncameron.dev; frame-src https://docs.google.com https://forms.gle;" />
 
   <!-- PWA: instalável e offline -->
   <link rel="manifest" href="manifest.webmanifest" />
@@ -13,6 +14,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Férias" />
+  <link rel="shortcut icon" href="icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png" />
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
@@ -127,16 +129,16 @@
       <div id="res-cabecalho" class="res-cabecalho"></div>
 
       <div class="abas" role="tablist" aria-label="Modo de cálculo das férias">
-        <button class="aba ativa" role="tab" aria-selected="true" data-modo="corridas">
+        <button class="aba ativa" role="tab" id="aba-corridas" aria-selected="true" aria-controls="lista-resultados" tabindex="0" data-modo="corridas">
           📅 Férias corridas<br><small>só emendas de feriados</small>
         </button>
-        <button class="aba" role="tab" aria-selected="false" data-modo="abonadas">
+        <button class="aba" role="tab" id="aba-abonadas" aria-selected="false" aria-controls="lista-resultados" tabindex="-1" data-modo="abonadas">
           ✨ Abonadas + doação<br><small>máximo em casa</small>
         </button>
-        <button class="aba" role="tab" aria-selected="false" data-modo="abonadas_sem_doacao">
+        <button class="aba" role="tab" id="aba-abonadas-sem-doacao" aria-selected="false" aria-controls="lista-resultados" tabindex="-1" data-modo="abonadas_sem_doacao">
           🗓️ Só abonadas<br><small>sem doação de sangue</small>
         </button>
-        <button class="aba" role="tab" aria-selected="false" data-modo="doacao">
+        <button class="aba" role="tab" id="aba-doacao" aria-selected="false" aria-controls="lista-resultados" tabindex="-1" data-modo="doacao">
           🩸 Só doação de sangue<br><small>sem abonadas</small>
         </button>
       </div>
@@ -147,7 +149,7 @@
 
       <p class="ajuda">Lista ordenada da <strong>melhor</strong> para a pior opção do ano.
          Clique em <strong>“✓ Escolher este período”</strong> na opção desejada.</p>
-      <div id="lista-resultados" class="lista-resultados" role="region" aria-live="polite" aria-label="Sugestões de férias"></div>
+      <div id="lista-resultados" class="lista-resultados" role="tabpanel" aria-live="polite" aria-label="Sugestões de férias"></div>
     </section>
 
     <!-- TELA 5: DECISÃO (continuar ou finalizar) -->

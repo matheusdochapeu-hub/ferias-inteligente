@@ -114,8 +114,7 @@ function desenhar(S, pad) {
       if (d <= guR && y <= guY) {
         const ang = Math.atan2(y - guY, x - guX); // -PI..0 no semicírculo de cima
         const gomo = Math.floor(((ang + Math.PI) / Math.PI) * 6) % 2;
-        const c = gomo === 0 ? [0xe5, 0x3935] : null;
-        if (c) set(x, y, 0xe5, 0x39, 0x35, 255);
+        if (gomo === 0) set(x, y, 0xe5, 0x39, 0x35, 255);
         else set(x, y, 0xff, 0xff, 0xff, 255);
       }
     }
