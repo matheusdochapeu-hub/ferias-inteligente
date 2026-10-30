@@ -21,6 +21,8 @@ const App = (function () {
     diasEspeciais: 0    // saldo informado de dias especiais a usar
   };
 
+  let _iniciado = false;
+
   const TOTAL_FERIAS = 30; // direito total de dias no ano
 
   const $ = (sel) => document.querySelector(sel);
@@ -63,6 +65,14 @@ const App = (function () {
     mostrarTela(alvo, true);
   });
 
+  function atualizarAnoUI() {
+    const ano = window.ANO_ATIVO;
+    const subt = $("#ano-subtitulo"); if (subt) subt.textContent = " · " + ano;
+    const plano = $("#ano-plano"); if (plano) plano.textContent = ano;
+    const titulo = document.querySelector("title");
+    if (titulo) titulo.textContent = `Férias Inteligente — Servidores Públicos (${ano})`;
+  }
+
   /* ---------- Inicialização / listeners ---------- */
   function iniciar() {
     // Guarda: se a base de feriados não carregou (ex.: 404 do arquivo de dados),
@@ -78,12 +88,9 @@ const App = (function () {
       return; // não registra os listeners que dependem dos dados
     }
 
-    // Preenche o ano exibido (dinâmico) nos textos da interface.
-    const ano = window.ANO_ATIVO;
-    const subt = $("#ano-subtitulo"); if (subt) subt.textContent = " · " + ano;
-    const plano = $("#ano-plano"); if (plano) plano.textContent = ano;
-    const titulo = document.querySelector("title");
-    if (titulo) titulo.textContent = `Férias Inteligente — Servidores Públicos (${ano})`;
+    atualizarAnoUI();
+    if (_iniciado) return;
+    _iniciado = true;
 
     $("#btn-usp").addEventListener("click", () => {
       estado.ente = "usp";
@@ -136,6 +143,24 @@ const App = (function () {
         }
       })
     );
+
+    const btnPersonalizado = $("#btn-dias-personalizado");
+    if (btnPersonalizado) {
+      btnPersonalizado.addEventListener("click", () => {
+        const blocoEsp = document.querySelector(".bloco-especiais");
+        if (!blocoEsp) return;
+        // Se ainda não ativou folgas, ativa automaticamente exibindo o painel e stepper
+        const espSim = $("#especiais-sim");
+        if (espSim && !estado.usaEspeciais) {
+          espSim.click();
+        }
+        blocoEsp.scrollIntoView({ behavior: "smooth", block: "center" });
+        blocoEsp.classList.add("bloco-especiais-destaque");
+        setTimeout(() => {
+          blocoEsp.classList.remove("bloco-especiais-destaque");
+        }, 1800);
+      });
+    }
 
     // Suporte WAI-ARIA tablist e navegação por teclado (M8)
     const abas = document.querySelectorAll(".aba[data-modo]");
@@ -308,6 +333,11 @@ const App = (function () {
     const avisoVenda = $("#aviso-venda");
     if (avisoVenda) avisoVenda.style.display = ehUsp ? "" : "none";
 
+    const btnPersonalizado = $("#btn-dias-personalizado");
+    if (btnPersonalizado) {
+      btnPersonalizado.style.gridColumn = ehUsp ? "" : "1 / -1";
+    }
+
     // Sincroniza o bloco de banco de horas / folgas TRE com o estado atual —
     // vale para TODOS os entes (corrige o caso de USP/Limeira ficarem com o
     // bloco dessincronizado após navegação entre entes).
@@ -473,21 +503,19 @@ const App = (function () {
     const abasEl = document.querySelector(".abas");
     if (abasEl) abasEl.style.display = estado.dias === 0 ? "none" : "";
 
-    const restr = estado.etapa === 2
-      ? Object.assign(restricoesDoPlano(), { mesesPreferidos: estado.mesesPreferidos })
+    const restrSemFiltro = estado.etapa === 2
+      ? Object.assign(restricoesDoPlano(), { mesesPreferidos: [] })
       : {
           diasEspeciaisDisponiveis: estado.usaEspeciais ? estado.diasEspeciais : 0,
-          mesesPreferidos: estado.mesesPreferidos
+          mesesPreferidos: []
         };
-    let lista = Motor.calcular(estado.ente, estado.cidade, estado.dias, estado.modo, restr);
-    const totalAntesFiltroMes = lista.length;
+    const listaCompleta = Motor.calcular(estado.ente, estado.cidade, estado.dias, estado.modo, restrSemFiltro);
+    const totalAntesFiltroMes = listaCompleta.length;
 
-    // filtro de preferência de mês: garante consistência se chamado diretamente
     const temFiltroMes = estado.mesesPreferidos && estado.mesesPreferidos.length;
-    if (temFiltroMes) {
-      const meses = new Set(estado.mesesPreferidos);
-      lista = lista.filter((s) => meses.has(s.inicioFerias.getMonth()));
-    }
+    let lista = temFiltroMes
+      ? Motor.calcular(estado.ente, estado.cidade, estado.dias, estado.modo, Object.assign({}, restrSemFiltro, { mesesPreferidos: estado.mesesPreferidos }))
+      : listaCompleta;
     const topo = lista.slice(0, 20);
 
     const container = $("#lista-resultados");
@@ -820,7 +848,21 @@ const App = (function () {
           cel.setAttribute("aria-label", `${dia} de ${nomeMesExtenso(mes)}: ${titulo}`);
           cel.tabIndex = 0;
           cel.addEventListener("click", () => {
-            alert(`${dia} de ${nomeMesExtenso(mes)}:\n${titulo}`);
+            let detalheBox = wrap.querySelector(".mini-dia-detalhe");
+            if (!detalheBox) {
+              detalheBox = el("div", "mini-dia-detalhe", "");
+              detalheBox.setAttribute("role", "status");
+              detalheBox.setAttribute("aria-live", "polite");
+              wrap.appendChild(detalheBox);
+            }
+            detalheBox.textContent = `📅 ${dia} de ${nomeMesExtenso(mes)}: ${titulo}`;
+            detalheBox.classList.add("ativo");
+          });
+          cel.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              cel.click();
+            }
           });
         }
         grid.appendChild(cel);
