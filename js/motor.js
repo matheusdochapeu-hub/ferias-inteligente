@@ -29,6 +29,9 @@
 const Motor = (function () {
   const MS_DIA = 86400000;
 
+  const getCalendarios = () => (typeof window !== "undefined" ? window.CALENDARIOS : globalThis.CALENDARIOS);
+  const getAnoAtivo = () => (typeof window !== "undefined" ? window.ANO_ATIVO : globalThis.ANO_ATIVO);
+
   function parse(dataISO) {
     const [a, m, d] = dataISO.split("-").map(Number);
     return new Date(a, m - 1, d);
@@ -54,7 +57,7 @@ const Motor = (function () {
   const MESES = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
   function fmt(dt) {
     const base = `${String(dt.getDate()).padStart(2, "0")}/${MESES[dt.getMonth()]}`;
-    return dt.getFullYear() !== Number(window.ANO_ATIVO) ? `${base}/${dt.getFullYear()}` : base;
+    return dt.getFullYear() !== Number(getAnoAtivo()) ? `${base}/${dt.getFullYear()}` : base;
   }
   function fmtExt(dt) { return `${DIAS_SEMANA[dt.getDay()]}, ${fmt(dt)}`; }
 
@@ -62,8 +65,10 @@ const Motor = (function () {
 
   /* Monta o mapa de dias especiais do ano para o ente/cidade selecionados.
    * Retorna { "AAAA-MM-DD": { nome, tipo, previsao } }. */
-  function montarCalendario(enteId, cidade) {
-    const C = window.CALENDARIOS[window.ANO_ATIVO];
+  function montarCalendario(enteId, cidade, calendariosDoc, anoAtivo) {
+    const calendarios = calendariosDoc || getCalendarios();
+    const ano = anoAtivo || getAnoAtivo();
+    const C = calendarios[ano];
     const mapa = {};
     // >= na comparação: a ÚLTIMA fonte de mesma prioridade sobrescreve (permite
     // que a versão local/"previsão" prevaleça sobre a nacional genérica).
@@ -93,7 +98,7 @@ const Motor = (function () {
     }
 
     // Fronteira de ano (C2): reconhecer dias adjacentes em dez/(ano-1) e jan/(ano+1)
-    const anoNum = Number(window.ANO_ATIVO);
+    const anoNum = Number(ano);
     mapa[`${anoNum + 1}-01-01`] = { nome: "Confraternização Universal", tipo: "feriado" };
     if (enteId === "usp") {
       mapa[`${anoNum - 1}-12-31`] = { nome: "Recesso de fim de ano (USP)", tipo: "feriado" };
@@ -295,7 +300,7 @@ const Motor = (function () {
     // tenta reservar um recurso para "comprar" o dia útil ou de meio período.
     // PRIORIDADE: dias especiais (banco/TRE) -> abonada -> doação.
     function reservar(dia) {
-      if (dia.getFullYear() !== Number(window.ANO_ATIVO)) return null; // não gastar cota de outro ano (C2)
+      if (dia.getFullYear() !== Number(getAnoAtivo())) return null; // não gastar cota de outro ano (C2)
       // 1º) dia especial (banco de horas / folga TRE): preferência máxima.
       // Banco de horas / folgas TRE SÓ podem ser usados em dias de semana
       // (segunda a sexta) — nunca em sábado/domingo. Trava explícita: os
@@ -565,9 +570,9 @@ const Motor = (function () {
       const depois = addDias(res.blocoFim, 1);
       const antes = addDias(res.blocoInicio, -1);
       const podeDepois = (classificar(depois, mapa).estado === "util" || classificar(depois, mapa).estado === "meio")
-        && depois.getFullYear() === Number(window.ANO_ATIVO) && doacaoPermitida(depois);
+        && depois.getFullYear() === Number(getAnoAtivo()) && doacaoPermitida(depois);
       const podeAntes = (classificar(antes, mapa).estado === "util" || classificar(antes, mapa).estado === "meio")
-        && antes.getFullYear() === Number(window.ANO_ATIVO) && doacaoPermitida(antes);
+        && antes.getFullYear() === Number(getAnoAtivo()) && doacaoPermitida(antes);
 
       // Preferimos a ponta que já encosta num fim de semana logo em seguida
       // (maior chance de "puxar" folga extra ao reexpandir); senão, qualquer uma.
@@ -654,9 +659,10 @@ const Motor = (function () {
    *     respeitarCLT: boolean             // opcional: evita início 2 dias antes de feriado/DSR (M4)
    *   }
    */
-  function calcular(enteId, cidade, diasFerias, modo, restricoes) {
-    const mapa = montarCalendario(enteId, cidade);
-    const ano = window.ANO_ATIVO;
+  function calcular(enteId, cidade, diasFerias, modo, restricoes, calendariosDoc, anoAtivo) {
+    const calendarios = calendariosDoc || getCalendarios();
+    const ano = anoAtivo || getAnoAtivo();
+    const mapa = montarCalendario(enteId, cidade, calendarios, ano);
     const inicioAno = new Date(ano, 0, 1);
     const fimAno = new Date(ano, 11, 31);
     const candidatos = [];
@@ -665,7 +671,7 @@ const Motor = (function () {
 
     // injeta as REGRAS DE ABONADA do ente (de data/entes.json via CALENDARIOS)
     // para que avaliarInicio/aplicarRecursos as respeitem. Fallback conservador.
-    const enteObj = window.CALENDARIOS[ano].entes[enteId];
+    const enteObj = calendarios[ano].entes[enteId];
     r.regrasAbonada = (enteObj && enteObj.abonadas) || { maxPorMes: 1, tetoAno: 6, mesesDuplosNoAno: 0 };
     // "fracionado" = este cálculo é de um 2º período. A cota de "mês duplo"
     // (Limeira) NÃO vale quando fracionado. Preferimos a flag explícita passada
@@ -747,6 +753,10 @@ const Motor = (function () {
     montarCalendario,
     classificar,
     configModo,
-    helpers: { parse, iso, addDias, diffDias, fmt, fmtExt, ehFimDeSemana, DIAS_SEMANA, MESES }
+    helpers: { parse, iso, addDias, diffDias, fmt, fmtExt, ehFimDeSemana, DIAS_SEMANA, MESES, getCalendarios, getAnoAtivo }
   };
 })();
+
+if (typeof module === "object" && module.exports) {
+  module.exports = Motor;
+}
