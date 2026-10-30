@@ -22,7 +22,7 @@
  * ===========================================================================*/
 "use strict";
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v4";
 const CACHE_SHELL = `ferias-shell-${CACHE_VERSION}`;
 const CACHE_DADOS = `ferias-dados-${CACHE_VERSION}`;
 
@@ -45,6 +45,12 @@ const PRECACHE = [
   "icons/icon-192.png",
   "icons/icon-512.png",
   "icons/icon-maskable-512.png",
+  "data/entes.json",
+  "data/feriados/index.json",
+  "data/feriados/nacionais-2027.json",
+  "data/feriados/pmrp-2027.json",
+  "data/feriados/usp-2027.json",
+  "data/feriados/limeira-2027.json"
 ].map(u);
 
 // -- INSTALL: pré-carrega o app shell ----------------------------------------
@@ -80,15 +86,20 @@ self.addEventListener("activate", (event) => {
 // -- helpers de estratégia ----------------------------------------------------
 function staleWhileRevalidate(request) {
   return caches.open(CACHE_DADOS).then((cache) =>
-    cache.match(request).then((cacheado) => {
+    cache.match(request).then((cacheadoDados) => {
       const rede = fetch(request)
         .then((resp) => {
           if (resp && resp.ok) cache.put(request, resp.clone());
           return resp;
         })
         .catch(() => null);
-      // responde do cache já; se não tiver, espera a rede
-      return cacheado || rede.then((r) => r || Response.error());
+
+      if (cacheadoDados) return cacheadoDados;
+
+      // Fallback para CACHE_SHELL caso o asset (ex: .js ou .css) esteja no precache
+      return caches.match(request).then((cacheadoShell) => {
+        return cacheadoShell || rede.then((r) => r || Response.error());
+      });
     })
   );
 }
