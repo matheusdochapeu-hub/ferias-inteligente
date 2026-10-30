@@ -15,7 +15,7 @@
 (function () {
   "use strict";
 
-  var FORM_URL = "https://forms.gle/DEXgWCQFVf4JjqoL6";
+  var FORM_URL = "https://docs.google.com/forms/d/e/1FAIpQLSeExwQLLXY9nAI6n32576JQa5Oe_PEftQVVt5DUeYVUiAxKNA/viewform";
 
   var modal = document.getElementById("feedback-modal");
   if (!modal) return;
