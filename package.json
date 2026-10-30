@@ -4,6 +4,8 @@
   "private": true,
   "description": "Calculadora inteligente de férias e emendas de feriados para servidores públicos (USP, PMRP e Limeira).",
   "scripts": {
+    "test": "agy-node --test test/**/*.test.js",
+    "check": "agy-node --check js/*.js scripts/*.js",
     "gerar-ano": "node scripts/gerar-ano.js",
     "gerar-icones": "node scripts/gerar-icones.js"
   },
