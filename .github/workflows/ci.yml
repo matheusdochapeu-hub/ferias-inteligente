@@ -1,0 +1,31 @@
+name: CI — Testes e Verificação
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    name: Testes Automatizados (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: ["20", "22"]
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Verificar sintaxe dos arquivos JS
+        run: |
+          node --check js/*.js scripts/*.js
+
+      - name: Executar testes nativos
+        run: |
+          node --test test/**/*.test.js
