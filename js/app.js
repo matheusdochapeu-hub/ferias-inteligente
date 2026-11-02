@@ -73,6 +73,19 @@ const App = (function () {
     if (titulo) titulo.textContent = `Férias Inteligente — Servidores Públicos (${ano})`;
   }
 
+  function trocarAno(novoAno) {
+    if (novoAno) {
+      window.ANO_ATIVO = novoAno;
+    }
+    resetar();
+    atualizarAnoUI();
+    mostrarTela("tela-orgao");
+    const listaResultados = $("#lista-resultados");
+    if (listaResultados) listaResultados.innerHTML = "";
+    const finalPeriodos = $("#final-periodos");
+    if (finalPeriodos) finalPeriodos.innerHTML = "";
+  }
+
   /* ---------- Inicialização / listeners ---------- */
   function iniciar() {
     // Guarda: se a base de feriados não carregou (ex.: 404 do arquivo de dados),
@@ -115,13 +128,15 @@ const App = (function () {
       b.addEventListener("click", () => {
         let alvo = b.getAttribute("data-voltar");
         if (alvo === "tela-orgao") resetar();
-        // Na 2ª etapa (2º período), "mudar nº de dias" não pode cair direto em
-        // tela-dias: lá o fluxo recomeçaria errado (sem reoferecer o 2º período
+        // Na 2ª etapa (ou períodos seguintes), "mudar nº de dias" não pode cair direto em
+        // tela-dias: lá o fluxo recomeçaria errado (sem reoferecer as opções adequadas
         // e pulando a preferência de mês). Volta à decisão, que reconstrói as
-        // opções de dias restantes a partir do 1º período já escolhido.
-        if (alvo === "tela-dias" && estado.etapa === 2) {
+        // opções de dias restantes a partir dos períodos já escolhidos.
+        if (alvo === "tela-dias" && estado.plano.length > 0) {
           const ehUsp = estado.ente === "usp";
-          const opcoes = opcoesRestantes(estado.plano[0].dias, ehUsp);
+          const ferias = periodosDeFeriasEscolhidos();
+          const diasRef = ferias.length > 0 ? ferias[ferias.length - 1].dias : 0;
+          const opcoes = opcoesRestantes(diasRef, ehUsp);
           renderDecisao(opcoes);
           alvo = "tela-decisao";
         }
@@ -344,6 +359,10 @@ const App = (function () {
     sincronizarEspeciais();
   }
 
+  function periodosDeFeriasEscolhidos() {
+    return estado.plano.filter((p) => p.dias > 0);
+  }
+
   /* Quais nº de dias podem ser escolhidos no 2º período, dado o 1º.
    * Regras:
    *   0  -> oferece [30, 20, 15, 10] (+ 5 na USP) para planejar as férias após folgas puras (A4)
@@ -364,8 +383,9 @@ const App = (function () {
     };
     let lista = (mapa[diasEscolhidos] || []).slice();
     // M11: se sobrou saldo de dias especiais após o 1º período, permite adicionar bloco de só-folgas (0 dias)
-    if (diasEscolhidos > 0 && estado.usaEspeciais && estado.plano && estado.plano.length > 0) {
-      const usados = (estado.plano[0].sugestao.diasEspeciais || []).length;
+    const jaTemBlocoZero = (estado.plano || []).some((p) => p.dias === 0);
+    if (diasEscolhidos > 0 && estado.usaEspeciais && estado.plano && estado.plano.length > 0 && !jaTemBlocoZero) {
+      const usados = estado.plano.reduce((acc, p) => acc + ((p.sugestao && p.sugestao.diasEspeciais) || []).length, 0);
       if (estado.diasEspeciais - usados > 0 && !lista.includes(0)) {
         lista.push(0);
       }
@@ -378,12 +398,15 @@ const App = (function () {
     const ente = window.CALENDARIOS[window.ANO_ATIVO].entes[estado.ente];
     let txt = ente.nome;
     if (estado.ente === "usp" && estado.cidade) txt += " — " + estado.cidade;
-    const etapaTxt = estado.etapa === 2 ? ` · 2º período (${estado.dias} dias restantes)` : ` · ${estado.dias} dias`;
+    const ehSegundoPeriodo = periodosDeFeriasEscolhidos().length === 1 && estado.dias > 0;
+    const etapaTxt = ehSegundoPeriodo
+      ? ` · 2º período (${estado.dias} dias restantes)`
+      : ` · ${estado.dias} dias`;
     $("#mes-info").textContent = `${txt}${etapaTxt}`;
 
-    // botão "voltar": na 1ª etapa volta aos dias; na 2ª volta à decisão
+    // botão "voltar": na 1ª etapa volta aos dias; em etapas posteriores volta à decisão
     const voltar = $("#mes-voltar");
-    if (estado.etapa === 2) {
+    if (estado.plano.length > 0) {
       voltar.setAttribute("data-voltar", "tela-decisao");
       voltar.textContent = "⬅️ Voltar";
     } else {
@@ -454,7 +477,8 @@ const App = (function () {
   /* ---------- Tela resultados ---------- */
   function renderResultados() {
     const ente = window.CALENDARIOS[window.ANO_ATIVO].entes[estado.ente];
-    const etapaTxt = estado.etapa === 2
+    const ehSegundoPeriodo = periodosDeFeriasEscolhidos().length === 1 && estado.dias > 0;
+    const etapaTxt = ehSegundoPeriodo
       ? ` &nbsp;·&nbsp; <em>2º período — ${estado.dias} dias restantes</em>`
       : "";
     const mesesTxt = (estado.mesesPreferidos && estado.mesesPreferidos.length)
@@ -486,15 +510,20 @@ const App = (function () {
         `Por isso ele <strong>não é usado para montar emendas</strong>; fica só como aviso.`;
     }
 
-    // aviso do que já foi escolhido (etapa 2)
+    // aviso do que já foi escolhido
     const avisoPlano = $("#aviso-plano");
     if (estado.plano.length) {
-      const p = estado.plano[0];
       avisoPlano.style.display = "";
+      const itens = estado.plano.map((p, idx) => {
+        if (p.dias === 0) {
+          return `Folgas banco/TRE: ${H.fmtExt(p.sugestao.blocoInicio)} → ${H.fmtExt(p.sugestao.blocoFim)}`;
+        }
+        const numFerias = estado.plano.slice(0, idx + 1).filter((x) => x.dias > 0).length;
+        return `${numFerias}º período: ${H.fmtExt(p.sugestao.inicioFerias)} → ${H.fmtExt(p.sugestao.fimFerias)} (${p.dias} dias)`;
+      });
       avisoPlano.innerHTML =
-        `✅ <strong>1º período já escolhido:</strong> ` +
-        `${H.fmtExt(p.sugestao.inicioFerias)} → ${H.fmtExt(p.sugestao.fimFerias)} ` +
-        `(${p.dias} dias). As opções abaixo já excluem datas que colidem.`;
+        `✅ <strong>${estado.plano.length === 1 ? (estado.plano[0].dias === 0 ? "Folgas banco/TRE já escolhidas" : "1º período já escolhido") : "Períodos já escolhidos"}:</strong> ` +
+        itens.join(" · ") + `. As opções abaixo já excluem datas que colidem.`;
     } else {
       avisoPlano.style.display = "none";
     }
@@ -503,7 +532,7 @@ const App = (function () {
     const abasEl = document.querySelector(".abas");
     if (abasEl) abasEl.style.display = estado.dias === 0 ? "none" : "";
 
-    const restrSemFiltro = estado.etapa === 2
+    const restrSemFiltro = estado.plano.length > 0
       ? Object.assign(restricoesDoPlano(), { mesesPreferidos: [] })
       : {
           diasEspeciaisDisponiveis: estado.usaEspeciais ? estado.diasEspeciais : 0,
@@ -536,17 +565,17 @@ const App = (function () {
       const nomes = estado.mesesPreferidos.slice().sort((a, b) => a - b).map(nomeMesExtenso).join(", ");
       box.appendChild(el("p", "vazio",
         `😕 Nenhuma opção de <strong>${estado.dias} dias</strong> começa em <strong>${nomes}</strong>` +
-        (estado.etapa === 2 ? ` sem colidir com o 1º período` : ``) + `.`));
+        (estado.plano.length > 0 ? ` sem colidir com os períodos já escolhidos` : ``) + `.`));
       const btn = el("button", "btn-opcao", "📅 Escolher outros meses (ou todos)");
       btn.addEventListener("click", () => {
         renderPreferenciaMes();
         mostrarTela("tela-mes");
       });
       box.appendChild(btn);
-    } else if (estado.etapa === 2) {
-      // 2ª etapa sem filtro de mês: colisão com o 1º período
+    } else if (estado.plano.length > 0) {
+      // colisão com período(s) já escolhido(s)
       box.appendChild(el("p", "vazio",
-        `😕 Nenhuma opção de <strong>${estado.dias} dias</strong> foi encontrada sem colidir com o 1º período. ` +
+        `😕 Nenhuma opção de <strong>${estado.dias} dias</strong> foi encontrada sem colidir com os períodos já escolhidos. ` +
         `Tente outro modo de cálculo ou finalize o plano.`));
     } else {
       box.appendChild(el("p", "vazio", "Nenhuma sugestão encontrada."));
@@ -653,10 +682,21 @@ const App = (function () {
     estado.plano.push({ sugestao, modo: estado.modo, dias: estado.dias });
 
     const ehUsp = estado.ente === "usp";
-    const opcoes = estado.etapa === 1 ? opcoesRestantes(estado.dias, ehUsp) : [];
+    const ferias = periodosDeFeriasEscolhidos();
+    const totalDiasFerias = ferias.reduce((s, p) => s + p.dias, 0);
 
-    // se há opções de 2º período E ainda estamos na 1ª etapa, pergunta
-    if (opcoes.length && estado.etapa === 1) {
+    let opcoes = [];
+    if (estado.dias === 0) {
+      if (ferias.length === 0) {
+        opcoes = opcoesRestantes(0, ehUsp);
+      } else if (ferias.length === 1 && totalDiasFerias < TOTAL_FERIAS) {
+        opcoes = opcoesRestantes(ferias[0].dias, ehUsp);
+      }
+    } else if (ferias.length === 1 && totalDiasFerias < TOTAL_FERIAS) {
+      opcoes = opcoesRestantes(sugestao.diasFerias, ehUsp);
+    }
+
+    if (opcoes.length && ferias.length < 2 && totalDiasFerias < TOTAL_FERIAS) {
       renderDecisao(opcoes);
       mostrarTela("tela-decisao");
     } else {
@@ -666,13 +706,43 @@ const App = (function () {
   }
 
   function renderDecisao(opcoes) {
-    const p = estado.plano[0];
-    $("#decisao-resumo").innerHTML =
-      `✅ <strong>1º período escolhido:</strong> ${H.fmtExt(p.sugestao.inicioFerias)} → ` +
-      `${H.fmtExt(p.sugestao.fimFerias)} (${p.dias} dias).`;
-    $("#decisao-pergunta").textContent = opcoes.length > 1
-      ? "Quantos dias você quer selecionar no 2º período?"
-      : `Você quer selecionar os ${opcoes[0]} dias restantes?`;
+    const ferias = periodosDeFeriasEscolhidos();
+    const resumoEl = $("#decisao-resumo");
+    if (resumoEl) {
+      if (estado.plano.length === 1 && estado.plano[0].dias > 0) {
+        const p = estado.plano[0];
+        resumoEl.innerHTML =
+          `✅ <strong>1º período escolhido:</strong> ${H.fmtExt(p.sugestao.inicioFerias)} → ` +
+          `${H.fmtExt(p.sugestao.fimFerias)} (${p.dias} dias).`;
+      } else if (estado.plano.length === 1 && estado.plano[0].dias === 0) {
+        const p = estado.plano[0];
+        resumoEl.innerHTML =
+          `🏦 <strong>Folgas banco/TRE já escolhidas:</strong> ${H.fmtExt(p.sugestao.blocoInicio)} → ` +
+          `${H.fmtExt(p.sugestao.blocoFim)} (${p.sugestao.totalDescanso} dias de descanso total).`;
+      } else {
+        const itens = estado.plano.map((p, idx) => {
+          if (p.dias === 0) {
+            return `🏦 <strong>Folgas banco/TRE:</strong> ${H.fmtExt(p.sugestao.blocoInicio)} → ${H.fmtExt(p.sugestao.blocoFim)} (${p.sugestao.totalDescanso} dias de descanso total)`;
+          }
+          const numFerias = estado.plano.slice(0, idx + 1).filter((x) => x.dias > 0).length;
+          return `📅 <strong>${numFerias}º período de férias:</strong> ${H.fmtExt(p.sugestao.inicioFerias)} → ${H.fmtExt(p.sugestao.fimFerias)} (${p.dias} dias)`;
+        });
+        resumoEl.innerHTML = `✅ <strong>Períodos já escolhidos:</strong><br>` + itens.join("<br>");
+      }
+    }
+
+    const perguntaEl = $("#decisao-pergunta");
+    if (perguntaEl) {
+      if (ferias.length === 0) {
+        perguntaEl.textContent = "Quantos dias de férias você quer selecionar?";
+      } else if (opcoes.length > 1) {
+        perguntaEl.textContent = "Quantos dias você quer selecionar no 2º período?";
+      } else if (opcoes.length === 1 && opcoes[0] === 0) {
+        perguntaEl.textContent = "Você quer planejar folgas de banco de horas / TRE?";
+      } else {
+        perguntaEl.textContent = `Você quer selecionar os ${opcoes[0]} dias restantes?`;
+      }
+    }
 
     // Aviso de Limeira: a cota de "mês duplo" (2 abonadas num mesmo mês) só vale
     // para férias em PERÍODO ÚNICO. Se o 1º período usou 2 abonadas no mesmo mês
@@ -681,7 +751,8 @@ const App = (function () {
     if (aviso) {
       // O motor marca com `_duplo: true` a abonada que consumiu a cota de "mês
       // duplo" (2 abonadas no mesmo mês), vantagem exclusiva de período único.
-      const usouMesDuplo = (p.sugestao.abonadas || []).some((a) => a._duplo);
+      const pFerias = estado.plano.find((p) => p.dias > 0);
+      const usouMesDuplo = pFerias && (pFerias.sugestao.abonadas || []).some((a) => a._duplo);
       if (usouMesDuplo) {
         aviso.style.display = "";
         aviso.innerHTML =
@@ -701,20 +772,22 @@ const App = (function () {
     opcoes.forEach((dias) => {
       const rotulo = dias === 0
         ? "🏦 Sim, planejar folgas (banco/TRE)"
-        : `📅 Sim, planejar ${dias} dias`;
+        : (ferias.length === 0
+            ? `📅 Planejar ${dias} dias de férias`
+            : `📅 Sim, planejar ${dias} dias`);
       const b = el("button", "btn-opcao grande", rotulo);
       b.addEventListener("click", () => {
         // Ao dividir férias em Limeira, remover mês duplo do 1º período (A1)
-        const p0 = estado.plano[0];
-        if (p0 && (p0.sugestao.abonadas || []).some((a) => a._duplo)) {
-          const listaSemDuplo = Motor.calcular(estado.ente, estado.cidade, p0.dias, p0.modo, {
+        const pFerias = estado.plano.find((p) => p.dias > 0);
+        if (pFerias && (pFerias.sugestao.abonadas || []).some((a) => a._duplo)) {
+          const listaSemDuplo = Motor.calcular(estado.ente, estado.cidade, pFerias.dias, pFerias.modo, {
             fracionado: true,
             diasEspeciaisDisponiveis: estado.usaEspeciais ? estado.diasEspeciais : 0
           });
-          const recalculado = listaSemDuplo.find((s) => +s.inicioFerias === +p0.sugestao.inicioFerias);
-          if (recalculado) p0.sugestao = recalculado;
+          const recalculado = listaSemDuplo.find((s) => +s.inicioFerias === +pFerias.sugestao.inicioFerias);
+          if (recalculado) pFerias.sugestao = recalculado;
         }
-        estado.etapa = 2;
+        estado.etapa = estado.plano.length + 1;
         estado.dias = dias;
         estado.modo = "corridas";        // recomeça no modo padrão para a nova etapa
         estado.mesesPreferidos = [];     // nova etapa recomeça sem filtro de mês
@@ -776,9 +849,10 @@ const App = (function () {
     cont.innerHTML = "";
     estado.plano.forEach((p, idx) => {
       const bloco = el("div", "final-periodo");
-      bloco.appendChild(el("h3", null,
-        `Período ${idx + 1} — ${p.dias} dias que se tornaram ` +
-        `<span class="virou-dias">${p.sugestao.totalDescanso} dias</span>`));
+      const rotuloTitulo = p.dias === 0
+        ? `Folgas (banco de horas / TRE) — sem gastar férias, <span class="virou-dias">${p.sugestao.totalDescanso} dias de descanso</span>`
+        : `Período ${idx + 1} — ${p.dias} dias que se tornaram <span class="virou-dias">${p.sugestao.totalDescanso} dias</span>`;
+      bloco.appendChild(el("h3", null, rotuloTitulo));
       bloco.appendChild(linhasSugestao(p.sugestao));
       bloco.appendChild(montarCalendarioVisual(p.sugestao, estado.ente, estado.cidade));
       cont.appendChild(bloco);
@@ -985,10 +1059,15 @@ const App = (function () {
       "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"][m];
   }
 
-  return { iniciar };
+  return { iniciar, trocarAno, resetar };
 })();
 
 // A inicialização é disparada por js/dados.js, DEPOIS que os JSON de feriados
 // são carregados (fetch) e window.CALENDARIOS[ano] é montado. Expomos App no
 // escopo global para o carregador poder chamá-lo.
-window.App = App;
+if (typeof window !== "undefined") {
+  window.App = App;
+}
+if (typeof module === "object" && module.exports) {
+  module.exports = App;
+}
