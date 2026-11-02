@@ -178,7 +178,9 @@
       .then(({ ano, entesDoc, nacionais, pmrp, usp, limeira }) => {
         montarCalendarios(ano, entesDoc, nacionais, pmrp, usp, limeira);
         renderSeletorAno(_anosDisponiveis, ano);
-        if (window.App && typeof window.App.iniciar === "function") {
+        if (window.App && typeof window.App.trocarAno === "function") {
+          window.App.trocarAno(ano);
+        } else if (window.App && typeof window.App.iniciar === "function") {
           window.App.iniciar();
         }
       })
