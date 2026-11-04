@@ -22,7 +22,7 @@
  * ===========================================================================*/
 "use strict";
 
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const CACHE_SHELL = `ferias-shell-${CACHE_VERSION}`;
 const CACHE_DADOS = `ferias-dados-${CACHE_VERSION}`;
 
