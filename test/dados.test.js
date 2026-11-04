@@ -210,3 +210,43 @@ test("js/dados.js delega para App.trocarAno e possui fallback para App.iniciar",
   assert.equal(chamouTrocarAno, null);
   assert.equal(chamouIniciar, true);
 });
+
+test("js/dados.js escolherAno: transição de ano respeita regra de 1º de outubro", () => {
+  const { escolherAno } = require("../js/dados.js");
+  const anosPublicados = [2026, 2027];
+
+  // Antes de 1º de outubro (ex.: setembro, mês 8 no JS): exibe o ano corrente (2026)
+  const dataAntesOutubro = new Date(2026, 8, 25);
+  assert.equal(escolherAno(anosPublicados, dataAntesOutubro), 2026);
+
+  // A partir de 1º de outubro (mês 9 no JS): desbloqueia o próximo ano (2027)
+  const dataEmOutubro = new Date(2026, 9, 1);
+  assert.equal(escolherAno(anosPublicados, dataEmOutubro), 2027);
+
+  // Em dezembro (mês 11 no JS): continua exibindo o próximo ano liberado (2027)
+  const dataEmDezembro = new Date(2026, 11, 15);
+  assert.equal(escolherAno(anosPublicados, dataEmDezembro), 2027);
+
+  // Fallback: se nenhum ano publicado for <= liberado, retorna o maior publicado
+  const anosFuturos = [2028, 2029];
+  assert.equal(escolherAno(anosFuturos, dataAntesOutubro), 2029);
+});
+
+test("js/dados.js montarCalendarios: preserva regrasInicio de entes.json", () => {
+  const { montarCalendarios } = require("../js/dados.js");
+  const entesDoc = JSON.parse(fs.readFileSync(path.join(__dirname, "../data/entes.json"), "utf8"));
+  const nacionais = JSON.parse(fs.readFileSync(path.join(__dirname, "../data/feriados/nacionais-2027.json"), "utf8"));
+  const pmrp = JSON.parse(fs.readFileSync(path.join(__dirname, "../data/feriados/pmrp-2027.json"), "utf8"));
+  const usp = JSON.parse(fs.readFileSync(path.join(__dirname, "../data/feriados/usp-2027.json"), "utf8"));
+  const limeira = JSON.parse(fs.readFileSync(path.join(__dirname, "../data/feriados/limeira-2027.json"), "utf8"));
+
+  // Mock global window para montarCalendarios
+  globalThis.window = globalThis.window || {};
+  montarCalendarios(2027, entesDoc, nacionais, pmrp, usp, limeira);
+
+  const cal = globalThis.window.CALENDARIOS[2027];
+  assert.ok(cal, "Calendário de 2027 deve estar montado");
+  assert.ok(cal.entes.usp.regrasInicio, "USP deve conter regrasInicio");
+  assert.equal(cal.entes.usp.regrasInicio.proibirSexta, true);
+  assert.equal(cal.entes.usp.regrasInicio.proibirAntecedenciaFeriado, true);
+});
