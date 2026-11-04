@@ -24,7 +24,7 @@ jobs:
 
       - name: Verificar sintaxe dos arquivos JS
         run: |
-          node --check js/*.js scripts/*.js
+          node scripts/check-syntax.js
 
       - name: Executar testes nativos
         run: |
