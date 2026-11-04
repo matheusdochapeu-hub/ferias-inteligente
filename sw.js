@@ -22,7 +22,7 @@
  * ===========================================================================*/
 "use strict";
 
-const CACHE_VERSION = "v5";
+const CACHE_VERSION = "v6";
 const CACHE_SHELL = `ferias-shell-${CACHE_VERSION}`;
 const CACHE_DADOS = `ferias-dados-${CACHE_VERSION}`;
 
@@ -37,6 +37,7 @@ const PRECACHE = [
   "js/motor.js",
   "js/app.js",
   "js/dados.js",
+  "js/pwa.js",
   "js/contador.js",
   "js/feedback.js",
   "js/pix.js",
