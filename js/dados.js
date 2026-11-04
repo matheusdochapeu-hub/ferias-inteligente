@@ -69,6 +69,7 @@
           nomeCurto: entes.usp.nomeCurto,
           esfera: entes.usp.esfera,
           pagamento: entes.usp.pagamento,
+          regrasInicio: entes.usp.regrasInicio || null,
           abonadas: entes.usp.abonadas || abonadaPadrao,
           estaduais: usp.estaduais || [],
           facultativosGerais: usp.facultativosGerais || [],
@@ -81,6 +82,7 @@
           nomeCurto: entes.pmrp.nomeCurto,
           esfera: entes.pmrp.esfera,
           pagamento: entes.pmrp.pagamento,
+          regrasInicio: entes.pmrp.regrasInicio || null,
           abonadas: entes.pmrp.abonadas || abonadaPadrao,
           feriadosLocais: pmrp.feriadosLocais || [],
           estaduais: pmrp.estaduais || [],
@@ -93,6 +95,7 @@
           nomeCurto: entes.limeira.nomeCurto,
           esfera: entes.limeira.esfera,
           pagamento: entes.limeira.pagamento,
+          regrasInicio: entes.limeira.regrasInicio || null,
           abonadas: entes.limeira.abonadas || abonadaPadrao,
           feriadosLocais: limeira.feriadosLocais || [],
           estaduais: limeira.estaduais || [],
@@ -229,9 +232,19 @@
       });
   }
 
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", iniciar);
-  } else {
-    iniciar();
+  if (typeof window !== "undefined") {
+    window.montarCalendarios = montarCalendarios;
+    window.escolherAno = escolherAno;
+  }
+  if (typeof module === "object" && module.exports) {
+    module.exports = { montarCalendarios, escolherAno };
+  }
+
+  if (typeof document !== "undefined") {
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", iniciar);
+    } else {
+      iniciar();
+    }
   }
 })();
