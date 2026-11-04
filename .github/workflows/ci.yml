@@ -28,4 +28,4 @@ jobs:
 
       - name: Executar testes nativos
         run: |
-          node --test test/**/*.test.js
+          node --test test/*.test.js
