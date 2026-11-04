@@ -1,0 +1,93 @@
+# Memória Persistente do Projeto — Férias Inteligente
+
+Este arquivo registra o histórico permanente de auditorias, regras de negócio aprendidas, correções implementadas e diretrizes de arquitetura para orientação de sessões e modelos futuros.
+
+---
+
+## [2026-11-04 15:55] - Revisão e Correção Automática (/revisar)
+
+### 🔍 Problemas Identificados & Causa Raiz
+
+1. **Incongruência de Metadados em `js/dados.js` (`montarCalendarios`)**:
+   - *Falha*: A função `montarCalendarios()` reconstruía o objeto `calendarios[ano].entes[enteId]` com uma lista fixa de propriedades (`id`, `nome`, `esfera`, `pagamento`, `abonadas`, etc.), omitindo `regrasInicio` que foi adicionada em `data/entes.json`.
+   - *Causa Raiz*: Whitelist manual de propriedades em `js/dados.js` sem mapear `regrasInicio`. No motor (`js/motor.js`), a condição `enteObj && enteObj.regrasInicio` resultava em `undefined` no navegador (funcionava na USP somente pelo fallback `ehUsp === true`).
+
+2. **Incongruência no Precache Offline do PWA (`sw.js`)**:
+   - *Falha*: `js/pwa.js` é importado no final de `index.html` para registrar o Service Worker, mas não estava listado no array `PRECACHE` do `sw.js`.
+   - *Causa Raiz*: Omissão do arquivo ao estruturar os assets do shell offline.
+
+3. **Incompatibilidade Multiplataforma no Script de Validação (`package.json`)**:
+   - *Falha*: O comando `"check": "agy-node --check js/*.js scripts/*.js"` falhava no Windows (`MODULE_NOT_FOUND`) porque cmd/powershell não expandem globs (`*.js`), e dependia do binário `agy-node` em vez do runner universal `node`.
+   - *Causa Raiz*: Suposição de expansão de glob pelo shell (comum em bash, inexistente em cmd.exe).
+
+4. **Lacuna de Testes em `escolherAno` e `montarCalendarios`**:
+   - *Falha*: A função de virada de ano (`escolherAno`, regra de 1º de outubro) e a integridade de montagem de calendários não possuíam testes unitários automatizados.
+
+5. **Lista de Arquivos do Sincronizador GitHub Desatualizada (`scripts/upload-github.js`)**:
+   - *Falha*: `upload-github.js` não continha `js/pwa.js`, `MEMORY.md` nem novos utilitários.
+
+---
+
+### 🛠️ Correções Implementadas
+
+1. **Propagação de `regrasInicio` em `js/dados.js`**:
+   - Adicionado `regrasInicio: entes[id].regrasInicio || null` na montagem de cada ente em `montarCalendarios()`.
+   - Exportadas as funções `montarCalendarios` e `escolherAno` tanto em `window` (quando em navegador) quanto em `module.exports` (quando em ambiente Node.js de teste).
+
+2. **Atualização do Precache Offline (`sw.js`)**:
+   - Incluído `"js/pwa.js"` no array `PRECACHE`.
+   - Incrementado `CACHE_VERSION` para `"v6"` para garantir revalidação imediata do cache nos clientes.
+
+3. **Criação do Verificador de Sintaxe Universal (`scripts/check-syntax.js`)**:
+   - Criado script nativo em Node.js usando a API `vm.Script` para varrer recursivamente `js/`, `scripts/` e `test/`.
+   - Atualizado `package.json` para `"check": "node scripts/check-syntax.js"` e `"test": "node --test test/**/*.test.js"`.
+   - Atualizado `.github/workflows/ci.yml` para executar o script multiplataforma.
+
+4. **Novos Testes Automatizados em `test/dados.test.js`**:
+   - Teste de `escolherAno`: valida que antes de 1º de outubro (ex.: setembro) o app não libera o ano seguinte, e a partir de 1º de outubro o ano seguinte é liberado.
+   - Teste de `montarCalendarios`: valida que `regrasInicio.proibirSexta` e `regrasInicio.proibirAntecedenciaFeriado` são devidamente propagados para `window.CALENDARIOS[ano].entes.usp`.
+
+5. **Sincronização Abrangente (`scripts/upload-github.js`)**:
+   - Incluídos `js/pwa.js`, `scripts/check-syntax.js` e `MEMORY.md` no array `ARQUIVOS`.
+
+---
+
+### 🧪 Validação
+
+- **Sintaxe**: 17 arquivos JS verificados via `scripts/check-syntax.js` (0 erros).
+- **Testes Unitários**: 23 testes executados com 100% de aprovação (0 falhas).
+  - App exporta iniciar, trocarAno e resetar
+  - App.trocarAno reseta estado completo e limpa DOM
+  - atualizarAnoUI e trocarAno refletem ano no DOM
+  - js/dados.js delega para App.trocarAno com fallback
+  - js/dados.js escolherAno: transição de ano respeita 1º de outubro
+  - js/dados.js montarCalendarios: preserva regrasInicio de entes.json
+  - pmrp 30 dias corridas: totalDescanso >= 30
+  - usp 15 dias abonadas: abonadas dentro das regras
+  - limeira abonadas _duplo: somente quando fracionado é false
+  - usp 5 dias: resultados válidos com diasFerias === 5
+  - 0 dias de férias com banco de horas: semFerias: true e diasEspeciais.length > 0
+  - usp ferias: nunca iniciam na sexta-feira nem nos 2 dias que antecedem feriados
+  - pmrp: permite inícios em sexta-feira quando aplicável
+  - Meeus Easter e feriados móveis 2027 e 2028
+  - Moveis.entradasParaJSON: estrutura correta
+  - Botão personalizado: HTML, listeners, comportamento e CSS
+  - opcoesRestantes: 0 dias + fluxo multi-período + prevenção de colisão
+
+---
+
+### 🧠 Regras & Decisões Aprendidas (Para Próximos Chats)
+
+1. **Configuração Orientada a Dados (`data/entes.json`)**:
+   - Toda nova regra ou restrição legal de um órgão (ex.: `regrasInicio`, `abonadas`) deve ser declarada em `data/entes.json` e propagada em `js/dados.js:montarCalendarios()`.
+   - O motor em `js/motor.js` deve sempre ler do `enteObj` montado a partir de `CALENDARIOS[ano].entes[enteId]`, mantendo fallback conservador apenas se o metadado não estiver definido.
+
+2. **Regras Férias Web (USP / CLT art. 134, § 3º)**:
+   - Servidores da USP nunca podem iniciar férias na sexta-feira nem nos 2 dias que antecedem feriados ou pontos facultativos.
+   - Folgas de banco de horas / TRE puras (`diasFerias === 0`) são isentas dessa vedação de férias.
+
+3. **Transição de Ano (1º de Outubro)**:
+   - O ano Y só é liberado para exibição a partir de 1º/out do ano Y-1. Antes dessa data, mesmo que os dados do ano Y existam, o app prioriza o ano corrente para evitar exibição de projeções antes dos decretos oficiais.
+
+4. **Multiplataforma (Windows + Linux)**:
+   - Nunca utilizar wildcards (`*.js`) em chamadas CLI do `package.json` dependentes de shell. Use scripts Node dedicados (`scripts/check-syntax.js`).
