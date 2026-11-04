@@ -8,6 +8,11 @@
       "esfera": "Estadual",
       "pagamento": "Salário no 4º dia útil do mês. Férias são pagas ADIANTADAS, no mês anterior ao gozo.",
       "temCidades": true,
+      "regrasInicio": {
+        "proibirSexta": true,
+        "proibirAntecedenciaFeriado": true,
+        "_descricao": "Férias Web (DRH USP / CLT art. 134 §3º): É vedado o início das férias às sextas-feiras e no período de dois dias que antecede feriado ou dia de repouso semanal remunerado."
+      },
       "abonadas": {
         "maxPorMes": 1,
         "tetoAno": 6,
