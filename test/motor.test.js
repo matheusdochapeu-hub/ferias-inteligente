@@ -127,3 +127,32 @@ test("0 dias de férias com banco de horas: returns suggestions with semFerias: 
     assert.ok(sug.diasEspeciais.length > 0);
   });
 });
+
+test("usp ferias: nunca iniciam na sexta-feira nem nos 2 dias que antecedem feriados (Férias Web / CLT)", () => {
+  const cidades = ["São Paulo", "Ribeirão Preto", "Piracicaba"];
+  const duracoes = [5, 10, 15, 20, 30];
+
+  cidades.forEach((cidade) => {
+    duracoes.forEach((dias) => {
+      const sugestoes = Motor.calcular("usp", cidade, dias, "corridas");
+      assert.ok(Array.isArray(sugestoes));
+      assert.ok(sugestoes.length > 0, `USP em ${cidade} para ${dias} dias deve retornar sugestões`);
+
+      sugestoes.forEach((sug) => {
+        const diaSemana = sug.inicioFerias.getDay();
+        assert.notEqual(
+          diaSemana,
+          5,
+          `Férias da USP não podem iniciar na sexta-feira (${sug.inicioFerias.toISOString().slice(0, 10)})`
+        );
+      });
+    });
+  });
+});
+
+test("pmrp: mantém flexibilidade padrão permitindo inícios em sexta-feira quando aplicável", () => {
+  const sugestoes = Motor.calcular("pmrp", null, 15, "corridas");
+  assert.ok(sugestoes.length > 0);
+  const temInicioSexta = sugestoes.some((sug) => sug.inicioFerias.getDay() === 5);
+  assert.equal(temInicioSexta, true, "PMRP sem restrição de CLT deve continuar permitindo inícios em sexta");
+});
