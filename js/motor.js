@@ -681,6 +681,10 @@ const Motor = (function () {
       ? r.fracionado
       : !!(r.diasBloqueados || r.mesesAbonadaUsados || r.doacoesUsadas);
 
+    const ehUsp = enteId === "usp";
+    const proibirSexta = ehUsp || !!(enteObj && enteObj.regrasInicio && enteObj.regrasInicio.proibirSexta) || !!r.proibirSexta;
+    const proibirAntecedenciaFeriado = ehUsp || !!(enteObj && enteObj.regrasInicio && enteObj.regrasInicio.proibirAntecedenciaFeriado) || !!r.proibirAntecedenciaFeriado || !!r.respeitarCLT;
+
     const soFolgas = diasFerias <= 0; // modo "só folgas especiais" (sem gastar férias)
     for (let d = new Date(inicioAno); d <= fimAno; d = addDias(d, 1)) {
       const c = classificar(d, mapa);
@@ -689,13 +693,17 @@ const Motor = (function () {
       // garante que o bloco de férias caiba no ano (no modo só-folgas, basta 1 dia)
       if (!soFolgas && addDias(d, diasFerias - 1) > fimAno) break;
 
-      // M4: CLT art. 134 §3º (vedado início nos 2 dias que antecedem feriado ou DSR)
-      if (r.respeitarCLT) {
-        const prox1 = classificar(addDias(d, 1), mapa);
-        const prox2 = classificar(addDias(d, 2), mapa);
-        const f1 = prox1.estado === "folga" || prox1.estado === "facultativo";
-        const f2 = prox2.estado === "folga" || prox2.estado === "facultativo";
-        if (f1 || f2) continue;
+      // Regras de início de férias legais (USP / Férias Web / CLT art. 134 §3º):
+      // É vedado iniciar férias às sextas-feiras (dois dias que antecedem o DSR)
+      // e no período de dois dias que antecede feriado ou ponto facultativo.
+      if (!soFolgas) {
+        if (proibirSexta && d.getDay() === 5) continue;
+        if (proibirAntecedenciaFeriado) {
+          const prox1 = classificar(addDias(d, 1), mapa);
+          const prox2 = classificar(addDias(d, 2), mapa);
+          const ehFeriado = (cf) => (cf.estado === "folga" && cf.motivo !== "Fim de semana") || cf.estado === "facultativo";
+          if (ehFeriado(prox1) || ehFeriado(prox2)) continue;
+        }
       }
 
       // A3: Filtro de mês de preferência antes de deduplicar
