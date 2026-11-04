@@ -347,6 +347,8 @@ const App = (function () {
     });
     const avisoVenda = $("#aviso-venda");
     if (avisoVenda) avisoVenda.style.display = ehUsp ? "" : "none";
+    const avisoUspSexta = $("#aviso-usp-sexta");
+    if (avisoUspSexta) avisoUspSexta.style.display = ehUsp ? "" : "none";
 
     const btnPersonalizado = $("#btn-dias-personalizado");
     if (btnPersonalizado) {
