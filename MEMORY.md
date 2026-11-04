@@ -91,3 +91,40 @@ Este arquivo registra o histórico permanente de auditorias, regras de negócio 
 
 4. **Multiplataforma (Windows + Linux)**:
    - Nunca utilizar wildcards (`*.js`) em chamadas CLI do `package.json` dependentes de shell. Use scripts Node dedicados (`scripts/check-syntax.js`).
+
+---
+
+## [2026-11-04 16:55] - Correção de Falha na CI e Desbloqueio do GitHub Pages
+
+### 🔍 Problemas Identificados & Causa Raiz
+
+1. **Falha na CI (Node 20)**:
+   - *Falha*: A execução dos testes automatizados falhava no ambiente Node 20 com o erro: `Could not find '.../test/**/*.test.js'`.
+   - *Causa Raiz*: No runner Ubuntu do GitHub Actions, o bash é executado sem `globstar` ativado, de forma que o padrão recursivo `**/*.test.js` não é expandido pelo shell. No Node 22 há resolução de globs embutida no CLI, mas no Node 20 a ausência de expansão causou a tentativa de carregar o arquivo com o literal `**`, quebrando a esteira com exit code 1.
+   - *Impacto*: O repositório exibia badge de falha vermelha (❌), e o deploy do GitHub Pages foi impedido de prosseguir.
+
+2. **Deploy Quebrado no GitHub Pages (`errored: Page build failed`)**:
+   - *Falha*: O status da API do GitHub Pages retornou `Pages status: errored (Page build failed.)`.
+   - *Causa Raiz*: Ausência do arquivo `.nojekyll` na raiz do repositório. Por padrão, o GitHub Pages aciona o parser do Jekyll para compilar o site. Na presença de arquivos markdown e diretórios especiais, o Jekyll falhou na compilação estática.
+   - *Impacto*: O site publicado em `https://matheusdochapeu-hub.github.io/ferias-inteligente/` permaneceu estagnado na versão antiga (`v4`), onde as férias da USP ainda iniciavam em sextas-feiras.
+
+3. **Spam de Commits Concorrentes no Sincronizador (`scripts/upload-github.js`)**:
+   - *Falha*: O script subia todos os 21 arquivos sequencialmente criando 21 commits separados via API REST, cancelando deploys do Pages e estourando o limite de concorrência.
+   - *Causa Raiz*: Ausência de verificação de hash Git local vs. remoto (`gitBlobSha`).
+
+### 🛠️ Correções Implementadas
+
+1. **Correção do Padrão de Testes na CI (`.github/workflows/ci.yml` & `package.json`)**:
+   - Substituído `node --test test/**/*.test.js` por `node --test test/*.test.js`. Como todos os testes do projeto estão situados diretamente na raiz da pasta `test/`, o glob simples é expandido perfeitamente tanto no Node 20 quanto no Node 22 e no Windows.
+
+2. **Criação de `.nojekyll` na Raiz**:
+   - Adicionado o arquivo `.nojekyll` para desativar o mecanismo Jekyll no GitHub Pages, garantindo deploy estático imediato e livre de falhas de build.
+
+3. **Deduplicação de Uploads via Hash Git (`scripts/upload-github.js`)**:
+   - Implementado cálculo de SHA-1 idêntico ao Git (`blob <size>\0<bytes>`). O script agora verifica se o hash local coincide com o remoto e pula arquivos inalterados, enviando apenas arquivos que de fato sofreram modificação.
+
+### 🧪 Validação
+
+- Testes nativos executados: 23 testes passando localmente (Node 20 e 24+).
+- Script de sintaxe: 17 arquivos validados sem nenhum erro de parsing.
+- Verificação exaustiva de sextas-feiras: 0 sugestões de início em sextas-feiras para a USP em qualquer cidade ou modo.
