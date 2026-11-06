@@ -128,3 +128,45 @@ Este arquivo registra o histórico permanente de auditorias, regras de negócio 
 - Testes nativos executados: 23 testes passando localmente (Node 20 e 24+).
 - Script de sintaxe: 17 arquivos validados sem nenhum erro de parsing.
 - Verificação exaustiva de sextas-feiras: 0 sugestões de início em sextas-feiras para a USP em qualquer cidade ou modo.
+
+
+---
+
+## [2026-11-05 16:30] - Nova Identidade Visual e Ícones Modernos 3D (Lógica do App Maracaju)
+
+### 🎨 Motivação & Solução
+1. **Nova Identidade Visual 3D**:
+   - Seguindo a lógica do app Maracaju, o cabeçalho agora utiliza uma marca estruturada (`.brand-wrapper`) com o logotipo moderno do app (`.brand-logo`) ao lado do título institucional, substituindo o emoji cru anterior.
+   - Ícone concebido com metáfora 3D tátil de alto padrão (calendário moderno de mesa integrado a um cenário tropical ensolarado com mar turquesa, areia e guarda-sol listrado, em degradê azul real e oceano profundo).
+2. **Pacote Completo de Ícones PWA**:
+   - Gerados com interpolação de alta qualidade: `icon-512.png`, `icon-192.png`, `icon-maskable-512.png` (com safe margin para launchers circulares/adaptativos do Android), `apple-touch-icon.png` (180x180), `favicon.png` (64x64) e `favicon.ico` multi-resolução (16/32/48/64) na raiz.
+   - Criado script de automação `scripts/generate-icons.ps1` usando PowerShell e `System.Drawing`.
+3. **PWA & Cache**:
+   - `sw.js` atualizado para a versão de cache `v7`, incluindo os novos assets de ícone no precache offline.
+4. **Validação**:
+   - 16 arquivos JS validados pelo verificador de sintaxe (0 erros).
+   - 23 testes unitários nativos executados com 100% de aprovação.
+
+
+---
+
+## [2026-11-06 11:30] - Botão de Instalação PWA e Guia Ilustrado
+
+### 📲 Motivação & Solução
+1. **Botão "Instalar aplicativo" no Cabeçalho**:
+   - Adicionado botão pill com degradê azul escuro/real (`#1565c0` / `#0d47a1`), ícone `📲` e microinteração de hover em `.header-actions`.
+   - Se o usuário já estiver acessando em modo standalone (PWA instalado), o botão é automaticamente ocultado para não ocupar espaço.
+2. **Suporte Nativo Android / Chromium e Guia iOS**:
+   - Em navegadores com suporte a `beforeinstallprompt` (Chrome Android, Edge, etc.), aciona diretamente a caixa de diálogo nativa de instalação com 1 toque.
+   - No iPhone/Safari ou navegadores sem prompt nativo, abre o modal acessível `#instalar-modal` com passo a passo ilustrado para iOS (Safari), Android e Computador.
+3. **PWA & Cache**:
+   - `sw.js` incrementado para `v8`.
+4. **Validação & Testes**:
+   - Criado `test/pwa.test.js` cobrindo presença no HTML, estilos CSS e listeners em `js/pwa.js`.
+   - 17 arquivos JS validados pelo verificador de sintaxe (0 erros).
+   - 26 testes unitários nativos executados com 100% de aprovação.
+
+- **Garantia de Desaparecimento Pós-Instalação**:
+  - Implementada media query CSS `@media all and (display-mode: standalone), (display-mode: fullscreen), (display-mode: minimal-ui) { #btn-instalar-app, .header-actions { display: none !important; } }`, eliminando qualquer piscada visual ao abrir o app instalado.
+  - Monitoramento contínuo em JavaScript (`ehStandalone()`, listener dinâmico de `matchMedia`, evento `appinstalled`, aceite no `beforeinstallprompt` e persistência em `localStorage`).
+  - Adicionado botão *"Já instalei o app"* no rodapé do modal de instruções para usuários de iPhone/Safari poderem ocultar o botão manualmente caso desejem.

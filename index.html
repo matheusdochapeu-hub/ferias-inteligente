@@ -14,17 +14,28 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="Férias" />
-  <link rel="shortcut icon" href="icons/icon-192.png" />
+  <link rel="shortcut icon" href="favicon.ico" />
   <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
   <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
 
   <link rel="stylesheet" href="css/estilo.css" />
 </head>
 <body>
   <header class="topo">
-    <h1>🏖️ Férias Inteligente</h1>
+    <div class="brand-wrapper">
+      <img src="icons/icon-192.png" alt="Logo Férias Inteligente" class="brand-logo" />
+      <div class="brand-text">
+        <h1>Férias Inteligente</h1>
+      </div>
+    </div>
     <p class="subtitulo">As melhores datas para tirar férias e emendar feriados — Servidores Públicos<span id="ano-subtitulo"></span></p>
+    <div class="header-actions">
+      <button type="button" id="btn-instalar-app" class="btn-instalar" title="Instalar aplicativo no seu celular ou computador">
+        <span class="btn-instalar-icone">📲</span>
+        <span>Instalar aplicativo</span>
+      </button>
+    </div>
   </header>
 
   <main>
@@ -235,6 +246,54 @@
         <p class="pix-recebedor">Recebedor: <strong>Matheus</strong> · São Paulo</p>
         <button type="button" id="pix-copiar" class="btn-escolher pix-copiar">📋 Copiar chave Pix</button>
         <p id="pix-copiado" class="pix-copiado" hidden>✅ Chave copiada! Cole no seu app do banco.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Como Instalar o Aplicativo (PWA) -->
+  <div id="instalar-modal" class="feedback-modal" hidden role="dialog" aria-modal="true" aria-labelledby="instalar-titulo">
+    <div class="feedback-backdrop" data-fechar-instalar></div>
+    <div class="feedback-caixa instalar-caixa" role="document">
+      <div class="feedback-cab">
+        <h2 id="instalar-titulo">📲 Instalar Aplicativo</h2>
+        <button type="button" class="feedback-fechar" aria-label="Fechar" data-fechar-instalar>✕</button>
+      </div>
+      <div class="instalar-corpo">
+        <p class="instalar-intro">Instale o <strong>Férias Inteligente</strong> no seu celular ou computador para abrir com 1 toque na tela inicial e usar mesmo sem internet!</p>
+
+        <!-- Bloco iPhone / iOS -->
+        <div class="instalar-bloco">
+          <h4>🍏 Se você usa <strong>iPhone ou iPad (Safari)</strong>:</h4>
+          <ol>
+            <li>Abra este site no navegador <strong>Safari</strong>.</li>
+            <li>Toque no botão de <strong>Compartilhar</strong> (ícone de quadrado com seta para cima ⎋ na barra inferior).</li>
+            <li>Role a lista e toque em <strong>"Adicionar à Tela de Início"</strong> (ícone ➕).</li>
+            <li>No canto superior direito, toque em <strong>"Adicionar"</strong>.</li>
+          </ol>
+        </div>
+
+        <!-- Bloco Android -->
+        <div class="instalar-bloco">
+          <h4>🤖 Se você usa <strong>Android (Chrome)</strong>:</h4>
+          <ol>
+            <li>Abra este site no <strong>Google Chrome</strong>.</li>
+            <li>Toque no botão <strong>"Instalar aplicativo"</strong> no topo da tela.</li>
+            <li>Ou toque nos <strong>3 pontinhos</strong> (⋮) no canto superior e selecione <strong>"Instalar aplicativo"</strong> ou <strong>"Adicionar à tela inicial"</strong>.</li>
+          </ol>
+        </div>
+
+        <!-- Bloco Computador -->
+        <div class="instalar-bloco">
+          <h4>💻 Se você está no <strong>Computador (Chrome / Edge)</strong>:</h4>
+          <ol>
+            <li>Clique no ícone de instalar na <strong>barra de endereço</strong> (ao lado dos favoritos).</li>
+            <li>Ou clique nos <strong>3 pontinhos</strong> (⋮) e escolha <strong>"Instalar Férias Inteligente"</strong>.</li>
+          </ol>
+        </div>
+      </div>
+      <div class="instalar-rodape-btn" style="display: flex; gap: 10px; flex-wrap: wrap;">
+        <button type="button" class="btn-escolher" style="flex: 1; min-width: 140px;" data-fechar-instalar>Entendido!</button>
+        <button type="button" class="btn-opcao" style="flex: 1; min-width: 140px; margin: 0; padding: 10px;" data-ja-instalado>Já instalei o app</button>
       </div>
     </div>
   </div>

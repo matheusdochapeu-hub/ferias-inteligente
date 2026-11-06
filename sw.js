@@ -22,7 +22,7 @@
  * ===========================================================================*/
 "use strict";
 
-const CACHE_VERSION = "v6";
+const CACHE_VERSION = "v8";
 const CACHE_SHELL = `ferias-shell-${CACHE_VERSION}`;
 const CACHE_DADOS = `ferias-dados-${CACHE_VERSION}`;
 
@@ -43,9 +43,12 @@ const PRECACHE = [
   "js/pix.js",
   "js/vendor/qrcode.min.js",
   "manifest.webmanifest",
+  "favicon.ico",
   "icons/icon-192.png",
   "icons/icon-512.png",
   "icons/icon-maskable-512.png",
+  "icons/apple-touch-icon.png",
+  "icons/favicon.png",
   "data/entes.json",
   "data/feriados/index.json",
   "data/feriados/nacionais-2027.json",
